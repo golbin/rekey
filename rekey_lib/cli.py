@@ -94,6 +94,16 @@ def cmd_rotate(args) -> int:
     return core.rotate(ctx, ctx.select(args.select, args.only), force=args.force, redo=args.redo)
 
 
+def cmd_issue(args) -> int:
+    ctx = ctx_for(args)
+    return core.rotate(ctx, ctx.select(args.select, args.only), force=args.force, redo=args.redo, apply_now=False)
+
+
+def cmd_apply(args) -> int:
+    ctx = ctx_for(args)
+    return core.apply(ctx, ctx.select(args.select, args.only))
+
+
 def cmd_revoke(args) -> int:
     ctx = ctx_for(args)
     return core.revoke(ctx, ctx.select(args.select, args.only), force=args.force)
@@ -149,6 +159,10 @@ def main(argv: list[str] | None = None) -> int:
     cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}),
         (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
+    cmd("issue", cmd_issue, _("step 1 of rotate: new keys into 1Password only, nothing else changes"), (["select"], {"nargs": "+", "help": sel}), only, dry,
+        (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}),
+        (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
+    cmd("apply", cmd_apply, _("step 2 of rotate: put issued keys in place, then ask about each redeploy"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)

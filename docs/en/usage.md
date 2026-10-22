@@ -62,6 +62,13 @@ rekey revoke openai.shop
 - If anything is interrupted, run the same command again: it continues with what is left. A rotated key is not rotated again until its old key is revoked.
 - If some places can't be written, the rest still go ahead, and the command to retry them is printed at the end.
 
+Two steps when you want to look before anything changes:
+
+```bash
+rekey issue project:shop     # new keys into 1Password only
+rekey apply project:shop     # then put them in place; each redeploy is asked
+```
+
 ## Many keys at once
 
 ```bash

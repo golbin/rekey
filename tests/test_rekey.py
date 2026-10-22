@@ -180,6 +180,17 @@ class Flow(unittest.TestCase):
         self.assertEqual({i[1] for i in ctx.select(["project:api"])},
                          {i[1] for i in ctx.items() if any(t.rel.startswith("file/api/") for t in ctx.users(i))})
 
+    def test_issue_then_apply(self):
+        self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
+        secret = (V, "self.api.auth-secret")
+        before = open(f"{self.root}/api/.env").read()
+        self.run_(core.rotate, self.ctx(), [secret], apply_now=False)
+        self.assertEqual(open(f"{self.root}/api/.env").read(), before)          # issue: places untouched
+        self.assertEqual(self.run_(core.revoke, self.ctx(), [secret]), 0)
+        self.assertTrue(self.store.read(*secret).previous)                        # not revoked before apply
+        self.run_(core.apply, self.ctx(), [secret])
+        self.assertIn(self.store.read(*secret).fields["credential"], open(f"{self.root}/api/.env").read())
+
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         write(f"{self.root}/api/.env", f"OPENAI_API_KEY={OPENAI}\nRUNNER_AUTH_SECRET=old-auth-secret-1\nPORT=3000\nSTRIPE_API_KEY=sk_test_abc123456789\n")

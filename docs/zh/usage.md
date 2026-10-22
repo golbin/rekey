@@ -62,6 +62,13 @@ rekey revoke openai.shop
 - 中途中断时，重新运行同一命令即可从剩下的部分继续。已轮换的密钥在旧密钥吊销前不会再次轮换。
 - 部分使用处写入失败时，其余照常进行，最后会给出重新写入的命令。
 
+想在改动前先确认，可以分两步：
+
+```bash
+rekey issue project:shop     # 新密钥只存入 1Password
+rekey apply project:shop     # 再替换到各处；每个重新部署都会询问
+```
+
 ## 一次处理多个密钥
 
 ```bash

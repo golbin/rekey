@@ -258,7 +258,9 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
 # ================================================================ rotate
 
 
-def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False) -> int:
+def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False, apply_now: bool = True) -> int:
+    """New key → 1Password → (apply_now) every place → offer redeploys → offer revoking.
+    apply_now=False is `rekey issue`: only the new keys, places untouched until `rekey apply`."""
     from .setup import preflight
 
     if not ctx.dry_run and not preflight(ctx, items):
@@ -284,6 +286,8 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
             say(dim(f"  • {item[1]}: {why}  (" + _("to do it anyway: --force") + ")"))
         if waiting:
             say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
+        if issued := [i[1] for i in waiting if ctx.read(*i).state.get("applied") is False]:
+            say(dim("    " + _("Issued, not in place yet:") + " rekey apply " + " ".join(issued)))
             say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
         return 0
     if ctx.dry_run:
@@ -297,9 +301,13 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
     say("  • " + _("Places that change: {n}", n=len({t.rel for i in todo for t in ctx.users(i)})))
     if waiting:
         say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
+        if issued := [i[1] for i in waiting if ctx.read(*i).state.get("applied") is False]:
+            say(dim("    " + _("Issued, not in place yet:") + " rekey apply " + " ".join(issued)))
         say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
     for item, why in skipped:
         say(dim("  • " + _("skipped {key}: {why}", key=item[1], why=why)))
+    if not apply_now:
+        say(bold("  " + _("Only issuing: new keys go to {store}; no place changes until rekey apply.", store=ctx.store.label)))
     if not ctx.dry_run and ctx.interactive and interactive() and not ask("\n" + _("Start?")):
         return 0
 
@@ -310,7 +318,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
                 say(bold("\n" + _("Browser steps now: {n}.", n=len(browser))))
             step(f"[{n}/{len(todo)}] {item[1]}  {dim(provider(item[1]).label)}")
             try:
-                a, f = rotate_one(ctx, item, modes[item])
+                a, f = rotate_one(ctx, item, modes[item], apply_now)
                 actions += a
                 problems += [f"{item[1]} → {x}" for x in f]
                 done.append(item)
@@ -330,6 +338,15 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
 
     say()
     step(_("Result"))
+    if not apply_now:
+        ok(_("Issued: {n}. Nothing changed in the services yet.", n=len(done)))
+        if later:
+            warn(_("Left:") + " rekey issue " + " ".join(i[1] for i in later))
+        for p in problems:
+            fail(p)
+        if done:
+            say("  " + _("When you are ready to put them in place:") + " " + bold("rekey apply " + " ".join(i[1] for i in done)))
+        return 1 if problems else 0
     ok(("(dry-run) " if ctx.dry_run else "") + _("Rotated: {n}", n=len(done)))
     if later:
         warn(_("Left:") + " rekey rotate " + " ".join(i[1] for i in later))
@@ -345,7 +362,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
     return 1 if problems else 0
 
 
-def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], list[str]]:
+def rotate_one(ctx: Ctx, item: Item, how: str = "auto", apply_now: bool = True) -> tuple[list[tuple], list[str]]:
     rec, old = current(ctx, item)
     users = ctx.users(item)
     if ctx.dry_run:
@@ -394,11 +411,34 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], li
         previous, revoke = rec.previous, rec.state["revoke"]
     else:
         previous, revoke = old, ((rec.state.get("meta", {}) if rec else {}) if old else None)
-    new_rec = Record(new, previous=previous, state={"meta": meta, "revoke": revoke})
+    new_rec = Record(new, previous=previous, state={"meta": meta, "revoke": revoke, "applied": apply_now})
     new_rec.stamp()
     ctx.write(*item, new_rec)
     ok(_("saved to {store} (the old value is kept until it is revoked)", store=ctx.store.label))
-    return sync(ctx, users, item=item, values=new)
+    return sync(ctx, users, item=item, values=new) if apply_now else ([], [])
+
+
+def apply(ctx: Ctx, items: list[Item]) -> int:
+    """Put issued keys (rekey issue) in place everywhere, then offer the redeploys."""
+    todo = [(i, r) for i in items if (r := ctx.read(*i)) and r.state.get("applied") is False]
+    if not todo:
+        say(dim(_("Nothing to apply: no issued keys waiting (rekey issue makes them).")))
+        return 0
+    say(bold(_("Keys to put in place: {n}", n=len(todo))))
+    actions, problems = [], []
+    for item, rec in todo:
+        step(item[1])
+        a, f = sync(ctx, ctx.users(item), item=item, values=rec.fields)
+        actions += a
+        problems += [f"{item[1]} → {x}" for x in f]
+        if not f:
+            rec.state["applied"] = True
+            ctx.write(*item, rec)
+    problems += offer_deploy(ctx, actions)[0]
+    for p in problems:
+        fail(p)
+    say(dim("  " + _("After the deploys, revoke the old keys:") + " rekey revoke " + " ".join(i[1] for i, _r in todo)))
+    return 1 if problems else 0
 
 
 # ================================================================ revoke
@@ -438,6 +478,9 @@ def revoke_one(ctx: Ctx, item: Item, rec: Record) -> str:
 
 def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
     pending = [(i, r) for i in items if (r := ctx.read(*i)) and r.state.get("revoke") is not None]
+    if unapplied := [i[1] for i, r in pending if r.state.get("applied") is False]:
+        warn(_("Issued but not in place yet, so the old key is still in use:") + " rekey apply " + " ".join(unapplied))
+        pending = [(i, r) for i, r in pending if r.state.get("applied") is not False]
     if not pending:
         say(dim(_("No old keys to revoke.")))
         return 0
