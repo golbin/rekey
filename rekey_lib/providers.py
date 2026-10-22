@@ -19,6 +19,7 @@ import os
 import re
 import select
 import sys
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -407,5 +408,9 @@ def works(prov: Provider, fields: Fields) -> bool | None:
         return None
     key = fields["credential"]
     name, _sep, value = prov.header.partition(": ")
-    status, _body = http("GET", prov.check.format(key=key), headers={name: value.format(key=key)} if name else {})
+    for wait in (0, 3, 5, 10, 15):              # a key just made can take a few seconds to start working
+        time.sleep(wait)
+        status, _body = http("GET", prov.check.format(key=key), headers={name: value.format(key=key)} if name else {})
+        if status < 300 or status not in (401, 403):
+            break
     return status < 300
