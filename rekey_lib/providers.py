@@ -55,6 +55,7 @@ class Provider:
     admin: str = ""                    # issue() needs the admin key item rekey.<admin>
     how: str = ""                      # what to click and which permissions, when it isn't obvious
     locate: Callable | None = None     # (ctx, item, old) -> the exact page for this key, when the API can't help
+    snake: bool = False                # the name field takes only a-z, 0-9 and _
 
 
 def stamp() -> str:
@@ -79,6 +80,8 @@ def from_browser(ctx, item: str, prov: Provider, old: Fields, fields: list[str],
     if not (ctx.interactive and interactive()):
         raise Skip(_("a person has to issue this one:") + f" {page or prov.page or prov.label}")
     name = f"rekey-{item}-{stamp()}"
+    if prov.snake:
+        name = re.sub(r"[^a-z0-9_]", "_", name.lower())
     if again is None:
         page = page or prov.page
         set_clipboard(name)
@@ -380,7 +383,7 @@ PROVIDERS: dict[str, Provider] = {
                         "https://generativelanguage.googleapis.com/v1beta/models?key={key}", ""),
     "gcp-sa": P(_("GCP service account key"), "https://console.cloud.google.com/iam-admin/serviceaccounts", r"\{", issue_gcp_sa, revoke_gcp_sa),
     "supabase": P("Supabase secret key", "https://supabase.com/dashboard/projects", "sb_secret_", issue_supabase, revoke_supabase,
-                  how="Secret keys → + Add new secret key → copy the sb_secret_… value.", locate=locate_supabase),
+                  how="Secret keys → + Add new secret key → copy the sb_secret_… value.", locate=locate_supabase, snake=True),
     "cloudflare": P(_("Cloudflare token"), "https://dash.cloudflare.com/profile/api-tokens", "", issue_cloudflare, revoke_cloudflare,
                     admin="cloudflare-admin"),
     "resend": P("Resend", "https://resend.com/api-keys", "re_", issue_resend, revoke_resend, admin="resend-admin"),
