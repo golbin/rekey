@@ -51,7 +51,7 @@ class Provider:
     issue: Callable | None = None
     revoke: Callable | None = None
     check: str = ""                    # GET url that answers 2xx for a working key; {key} is substituted
-    header: str = "Authorization: Bearer {key}"
+    header: str = "Authorization: Bearer {key}"   # one or more "Name: value" lines
     admin: str = ""                    # issue() needs the admin key item rekey.<admin>
     how: str = ""                      # what to click and which permissions, when it isn't obvious
     locate: Callable | None = None     # (ctx, item, old) -> the exact page for this key, when the API can't help
@@ -377,7 +377,7 @@ PROVIDERS: dict[str, Provider] = {
                 "https://api.openai.com/v1/models", admin="openai-admin",
                 how="Create new secret key → the same project as the old key, permissions All (or the old key's)."),
     "anthropic": P("Anthropic", "https://console.anthropic.com/settings/keys", "sk-ant-", None, revoke_anthropic,
-                   "https://api.anthropic.com/v1/models", "x-api-key: {key}",
+                   "https://api.anthropic.com/v1/models", "x-api-key: {key}\nanthropic-version: 2023-06-01",
                    how="Create Key → the same workspace as the old key."),
     "google-api-key": P(_("Google API key"), "https://aistudio.google.com/app/apikey", "AIza", issue_gcp_api_key, revoke_gcp_api_key,
                         "https://generativelanguage.googleapis.com/v1beta/models?key={key}", ""),
@@ -431,10 +431,10 @@ def works(prov: Provider, fields: Fields) -> bool | None:
     if not prov.check or "credential" not in fields:
         return None
     key = fields["credential"]
-    name, _sep, value = prov.header.partition(": ")
+    headers = dict(line.split(": ", 1) for line in prov.header.format(key=key).splitlines() if ": " in line)
     for wait in (0, 3, 5, 10, 15):              # a key just made can take a few seconds to start working
         time.sleep(wait)
-        status, _body = http("GET", prov.check.format(key=key), headers={name: value.format(key=key)} if name else {})
+        status, _body = http("GET", prov.check.format(key=key), headers=headers)
         if status < 300 or status not in (401, 403):
             break
     return status < 300
