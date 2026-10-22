@@ -15,7 +15,7 @@ from collections import Counter
 from typing import Any, Callable
 
 from . import tpl
-from .providers import MANUAL, Skip, Stop, Unavailable, from_browser, provider, works
+from .providers import MANUAL, Skip, Stop, Unavailable, from_browser, key_name, provider, works
 from .store import Record
 from .targets import BROKEN, DEPLOY, HEALTHY, kind
 from .i18n import _
@@ -442,10 +442,10 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
             if msg.startswith(MANUAL):
                 v = rec.previous.get("credential", "")
                 tail = "  " + bold(_("ends in …{tail}", tail=v[-4:])) if len(v) > 12 and "\n" not in v else ""
-                if rec.state.get("undo"):                     # going back: the key to delete is the rekey-… one
-                    say("    " + _("Delete the new key rekey-{key}-… (the old one stays)", key=item[1]) + tail)
+                if rec.state.get("undo"):                     # going back: the key to delete is the rekey_… one
+                    say("    " + _("Delete the new key {name}… (the old one stays)", name=key_name(item[1], "x")[:-1]) + tail)
                 else:
-                    say(f"    {msg[len(MANUAL):]}" + tail + dim("  (" + _("keep rekey-{key}-…, that is the new one", key=item[1]) + ")"))
+                    say(f"    {msg[len(MANUAL):]}" + tail + dim("  (" + _("keep {name}…, that is the new one", name=key_name(item[1], "x")[:-1]) + ")"))
                 open_url(ctx.meta(item[1]).get("page") or prov.page)
                 if not ask("    " + _("Deleted it?")):
                     left.append(item[1])

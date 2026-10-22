@@ -55,11 +55,15 @@ class Provider:
     admin: str = ""                    # issue() needs the admin key item rekey.<admin>
     how: str = ""                      # what to click and which permissions, when it isn't obvious
     locate: Callable | None = None     # (ctx, item, old) -> the exact page for this key, when the API can't help
-    snake: bool = False                # the name field takes only a-z, 0-9 and _
 
 
 def stamp() -> str:
     return dt.datetime.now().strftime("%Y%m%d-%H%M")
+
+
+def key_name(item: str, when: str = "") -> str:
+    """rekey_openai_shop_20261022_1530: only a-z, 0-9 and _, which every service's name field takes."""
+    return re.sub(r"[^a-z0-9]+", "_", f"rekey {item} {when or stamp()}".lower()).strip("_")
 
 
 def admin_key(ctx, name: str) -> str:
@@ -79,9 +83,7 @@ def from_browser(ctx, item: str, prov: Provider, old: Fields, fields: list[str],
     `again`: values copied before that turned out wrong — just wait for another copy."""
     if not (ctx.interactive and interactive()):
         raise Skip(_("a person has to issue this one:") + f" {page or prov.page or prov.label}")
-    name = f"rekey-{item}-{stamp()}"
-    if prov.snake:
-        name = re.sub(r"[^a-z0-9_]", "_", name.lower())
+    name = key_name(item)
     if again is None:
         page = page or prov.page
         set_clipboard(name)
@@ -195,7 +197,7 @@ def issue_gcp_api_key(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     except (RekeyError, KeyError):
         raise Unavailable(_("can't tell which GCP project the old key belongs to"))
     cmd = ["gcloud", "services", "api-keys", "create", "--project", key["name"].split("/")[1],
-           "--display-name", f"rekey-{item}-{stamp()}", "--format", "json"]
+           "--display-name", key_name(item), "--format", "json"]
     cmd += [f"--api-target=service={t['service']}" for t in (key.get("restrictions") or {}).get("apiTargets", [])]
     created = json.loads(run(cmd, timeout=120).stdout)
     name = created.get("response", created)["name"]
@@ -258,7 +260,7 @@ def locate_supabase(ctx, item: tuple[str, str], old: Fields) -> str:
 def issue_supabase(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     ref, _key = _supabase_ref(ctx, old.get("credential", ""))
     k = _supabase(ctx, "POST", f"/v1/projects/{ref}/api-keys?reveal=true",
-                  {"type": "secret", "name": re.sub(r"[^a-z0-9_]", "_", f"rekey_{stamp()}")})
+                  {"type": "secret", "name": key_name(item)})
     return {"credential": k["api_key"]}, {}
 
 
@@ -292,7 +294,7 @@ def _openai_find(ctx, value: str) -> tuple[str, dict]:
 def issue_openai(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     pid, _key = _openai_find(ctx, old.get("credential", ""))
     sa = api("POST", f"https://api.openai.com/v1/organization/projects/{pid}/service_accounts",
-             admin_key(ctx, "openai-admin"), {"name": f"rekey-{item}-{stamp()}"})
+             admin_key(ctx, "openai-admin"), {"name": key_name(item)})
     return {"credential": sa["api_key"]["value"]}, {}
 
 
@@ -356,7 +358,7 @@ def revoke_cloudflare(ctx, item: str, old: Fields, meta: dict) -> str:
 
 
 def issue_resend(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
-    k = api("POST", "https://api.resend.com/api-keys", admin_key(ctx, "resend-admin"), {"name": f"rekey-{item}-{stamp()}"})
+    k = api("POST", "https://api.resend.com/api-keys", admin_key(ctx, "resend-admin"), {"name": key_name(item)})
     return {"credential": k["token"]}, {"key_id": k["id"]}
 
 
@@ -383,7 +385,7 @@ PROVIDERS: dict[str, Provider] = {
                         "https://generativelanguage.googleapis.com/v1beta/models?key={key}", ""),
     "gcp-sa": P(_("GCP service account key"), "https://console.cloud.google.com/iam-admin/serviceaccounts", r"\{", issue_gcp_sa, revoke_gcp_sa),
     "supabase": P("Supabase secret key", "https://supabase.com/dashboard/projects", "sb_secret_", issue_supabase, revoke_supabase,
-                  how="Secret keys → + Add new secret key → copy the sb_secret_… value.", locate=locate_supabase, snake=True),
+                  how="Secret keys → + Add new secret key → copy the sb_secret_… value.", locate=locate_supabase),
     "cloudflare": P(_("Cloudflare token"), "https://dash.cloudflare.com/profile/api-tokens", "", issue_cloudflare, revoke_cloudflare,
                     admin="cloudflare-admin"),
     "resend": P("Resend", "https://resend.com/api-keys", "re_", issue_resend, revoke_resend, admin="resend-admin"),

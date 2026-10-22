@@ -12,4 +12,4 @@ rekey rotate 'in:vercel/shop/*' 'in:file/shop/*'  # they only worked on some pro
 
 With many keys, let the automatic ones finish and press `q` at the browser steps. Continue later with the command rekey prints.
 
-**3. Remove keys they created.** In each service's key list, delete keys they made. Keys made by rekey are named `rekey-…`.
+**3. Remove keys they created.** In each service's key list, delete keys they made. Keys made by rekey are named `rekey_…`.
