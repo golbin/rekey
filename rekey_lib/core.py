@@ -83,8 +83,9 @@ class Ctx:
     def meta(self, name: str) -> dict[str, Any]:
         return self.keys.get(name, {})
 
-    def select(self, selectors: list[str]) -> list[Item]:
-        """name or glob · tag:<tag> · in:<template glob> · all. Items tagged 'retire' only by name."""
+    def select(self, selectors: list[str], only: list[str] | None = None) -> list[Item]:
+        """name or glob · tag:<tag> · in:<template glob> · all. Items tagged 'retire' only by name.
+        `only`: keep keys of these services (openai) or names (openai.*), e.g. to go one service at a time."""
         out = []
         for item in self.items():
             name, m = item[1], self.meta(item[1])
@@ -97,10 +98,13 @@ class Ctx:
                 if hit:
                     out.append(item)
                     break
+        if only:                                       # a bare service name means its keys: openai → openai.*
+            keep = set(self.select([g if ":" in g or any(c in g for c in ".*?[") else g + ".*" for g in only]))
+            out = [i for i in out if i in keep]
         if not self.templates:
             raise RekeyError(_("No templates in {home}. Run rekey inside your team data folder, or start one there with rekey init.", home=self.home))
         if not out:
-            raise RekeyError(_("No keys match {sel} (rekey ls)", sel=" ".join(selectors)))
+            raise RekeyError(_("No keys match {sel} (rekey ls)", sel=" ".join(selectors + [f"--only {g}" for g in only or []])))
         return out
 
     def template(self, rel: str) -> tpl.Template:

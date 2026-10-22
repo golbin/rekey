@@ -39,7 +39,7 @@ def ctx_for(args) -> core.Ctx:
 def cmd_ls(args) -> int:
     ctx = ctx_for(args)
     rows = [(_("key"), _("service"), _("issued"), _("places"), _("tags"))]
-    for item in ctx.select(args.select or ["all"]):
+    for item in ctx.select(args.select or ["all"], args.only):
         m = ctx.meta(item[1])
         tags = m.get("tags", []) + (["locked"] if m.get("locked") else [])
         rows.append((item[1], provider(item[1]).label, {"self": _("auto"), "auto": _("auto"), "admin": _("auto") + "*", "browser": _("browser")}[core.mode(item)],
@@ -84,12 +84,12 @@ def cmd_diff(args) -> int:
 
 def cmd_rotate(args) -> int:
     ctx = ctx_for(args)
-    return core.rotate(ctx, ctx.select(args.select), force=args.force, redo=args.redo)
+    return core.rotate(ctx, ctx.select(args.select, args.only), force=args.force, redo=args.redo)
 
 
 def cmd_revoke(args) -> int:
     ctx = ctx_for(args)
-    return core.revoke(ctx, ctx.select(args.select), force=args.force)
+    return core.revoke(ctx, ctx.select(args.select, args.only), force=args.force)
 
 
 def cmd_import(args) -> int:
@@ -124,13 +124,14 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument(*a[0], **a[1])
         p.set_defaults(fn=fn)
 
+    only = (["--only"], {"action": "append", "metavar": "SELECT", "help": _("narrow down: also match this (a service like openai, a name glob, tag:, in:); repeatable")})
     dry = (["--dry-run"], {"action": "store_true", "help": _("show what would happen, change nothing")})
-    cmd("ls", cmd_ls, _("list keys"), (["select"], {"nargs": "*", "help": sel}))
+    cmd("ls", cmd_ls, _("list keys"), (["select"], {"nargs": "*", "help": sel}), only)
     cmd("where", cmd_where, _("where a key is used"), (["select"], {"nargs": "+", "help": sel}))
-    cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), dry,
+    cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}),
         (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
-    cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), dry,
+    cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
