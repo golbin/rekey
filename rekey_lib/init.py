@@ -39,7 +39,7 @@ NAMES = [
     ("slack", r"SLACK_.*(TOKEN|SECRET)$|^SLACK_WEBHOOK"), ("polar", r"^POLAR_"),
     ("apple", r"^APNS_KEY$"), ("expo", r"^EXPO_ACCESS_TOKEN$"),
     ("fly", r"^FLY_API_"), ("vercel", r"^VERCEL_(ACCESS_)?TOKEN$"), ("github", r"^(GITHUB_PAT|GH_TOKEN)$"), ("sentry", r"^SENTRY_.*TOKEN$"),
-    ("meta", r"^META_ACCESS_TOKEN$"), ("trigger", r"^TRIGGER_SECRET"),
+    ("meta", r"^META_ACCESS_TOKEN$"), ("trigger", r"^TRIGGER_SECRET"), ("stripe", r"^STRIPE_(SECRET|RESTRICTED)_KEY$"),
     ("locked", r"MASTER_KEYS?$|ENCRYPTION_KEY$|_PAYLOAD_KEY$|_HASH_SECRET$|^SENSITIVE_KEY$"),
     ("self", r"^((BETTER_|NEXT)?AUTH|CRON|SESSION|JWT|COOKIE|REVALIDATE|ENCRYPTION)_SECRET$|^APP_SECRET$"),
     # Anything else that looks like a credential could belong to a third party: a person issues it in the browser.
@@ -48,7 +48,7 @@ NAMES = [
 ]
 # The value's own prefix beats the name (QUALITY_LLM_API_KEY may hold an OpenAI key).
 PREFIXES = [("sk-ant-", "anthropic"), ("sk-or-", "openrouter"), ("sk-", "openai"), ("AIza", "google-api-key"), ("re_", "resend"),
-            ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github")]
+            ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github"), ("sk_live_", "stripe"), ("rk_live_", "stripe")]
 PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"), ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "CLOUDFLARE_R2_SECRET_ACCESS_KEY"),
          ("other", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"), ("ncp", "NCP_ACCESS_KEY", "NCP_SECRET_KEY")]
 NOTES = {

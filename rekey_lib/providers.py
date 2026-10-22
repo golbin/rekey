@@ -375,6 +375,7 @@ PROVIDERS: dict[str, Provider] = {
     "polar": P("Polar", "https://polar.sh/dashboard"),
     "meta": P("Meta", "https://business.facebook.com/settings/system-users"),
     "trigger": P("Trigger.dev", "https://cloud.trigger.dev/"),
+    "stripe": P("Stripe", "https://dashboard.stripe.com/apikeys", r"(sk|rk)_(live|test)_"),
     "other": P(_("other")),
 }
 
