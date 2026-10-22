@@ -46,6 +46,16 @@ class Ctx:
 
     # -- values
     def read(self, vault: str, name: str) -> Record | None:
+        if f"vault:{vault}" not in self._cache:          # the whole vault in one go: one op call, not one per key
+            try:
+                recs = self.store.read_all(vault)
+            except RekeyError:
+                recs = None
+            self._cache[f"vault:{vault}"] = recs is not None
+            for n, rec in (recs or {}).items():
+                self._cache[f"rec:{vault}/{n}"] = rec
+        if self._cache[f"vault:{vault}"]:
+            return self._cache.get(f"rec:{vault}/{name}")
         return self.cached(f"rec:{vault}/{name}", lambda: self.store.read(vault, name))
 
     def write(self, vault: str, name: str, rec: Record) -> None:
