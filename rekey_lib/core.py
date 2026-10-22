@@ -83,8 +83,16 @@ class Ctx:
     def meta(self, name: str) -> dict[str, Any]:
         return self.keys.get(name, {})
 
+    def project(self, rel: str) -> str:
+        """The project a template belongs to: the git repository of a file, a Railway service, a Vercel project…"""
+        kind_, *a = rel.split("/")
+        if kind_ == "file":
+            return next((a[k - 1] for k in range(len(a) - 1, 0, -1)
+                         if os.path.exists(os.path.join(self.root, *a[:k], ".git"))), a[0])
+        return a[2] if kind_ == "railway" and len(a) > 2 else a[1] if kind_ == "github" and len(a) > 1 else a[0]
+
     def select(self, selectors: list[str], only: list[str] | None = None) -> list[Item]:
-        """name or glob · tag:<tag> · in:<template glob> · all. Items tagged 'retire' only by name.
+        """name or glob · tag:<tag> · in:<template glob> · project:<name> · all. Items tagged 'retire' only by name.
         `only`: keep keys of these services (openai) or names (openai.*), e.g. to go one service at a time."""
         out = []
         for item in self.items():
@@ -94,6 +102,7 @@ class Ctx:
                 hit = (sel == "all" and "retire" not in m.get("tags", [])) \
                     or (kind_ == "tag" and arg in m.get("tags", [])) \
                     or (kind_ == "in" and any(fnmatch.fnmatch(t.rel, arg) for t in self.users(item))) \
+                    or (kind_ == "project" and any(fnmatch.fnmatch(self.project(t.rel), arg) for t in self.users(item))) \
                     or fnmatch.fnmatch(name, sel)
                 if hit:
                     out.append(item)

@@ -107,7 +107,7 @@ def cmd_setup(args) -> int:
 def cmd_split(args) -> int:
     from .split import split
     ctx = ctx_for(args)
-    return split(ctx, ctx.select(args.select, args.only), [d for d in args.group_dirs.split(",") if d])
+    return split(ctx, ctx.select(args.select, args.only))
 
 
 def cmd_init(args) -> int:
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--version", action="version", version=f"rekey {__version__}")
     ap.add_argument("--no-input", action="store_true", help=_("skip steps that need a person and only say what is left"))
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sel = _("key name or glob, tag:<tag>, in:<template glob>, all")
+    sel = _("key name or glob, tag:<tag>, in:<template glob>, project:<name>, all")
 
     def cmd(name, fn, help_, *args):
         p = sub.add_parser(name, help=help_)
@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument(*a[0], **a[1])
         p.set_defaults(fn=fn)
 
-    only = (["--only"], {"action": "append", "metavar": "SELECT", "help": _("narrow down: also match this (a service like openai, a name glob, tag:, in:); repeatable")})
+    only = (["--only"], {"action": "append", "metavar": "SELECT", "help": _("narrow down: also match this (a service like openai, a name glob, tag:, in:, project:); repeatable")})
     dry = (["--dry-run"], {"action": "store_true", "help": _("show what would happen, change nothing")})
     cmd("ls", cmd_ls, _("list keys"), (["select"], {"nargs": "*", "help": sel}), only)
     cmd("where", cmd_where, _("where a key is used"), (["select"], {"nargs": "+", "help": sel}))
@@ -139,8 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
-    cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only,
-        (["--group-dirs"], {"default": "", "help": _("folders that hold several projects,... (keys are named after the folders inside)")}))
+    cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
     cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))

@@ -173,6 +173,8 @@ class Flow(unittest.TestCase):
         projects = {i[1]: len({t.rel.split("/")[1] for t in ctx.users(i)}) for i in ctx.items()}
         self.assertEqual(projects["self.api.auth-secret"], 2)        # our services share their own tokens
         self.assertTrue(all(n == 1 for k, n in projects.items() if not k.startswith("self.")))
+        self.assertEqual({i[1] for i in ctx.select(["project:api"])},
+                         {i[1] for i in ctx.items() if any(t.rel.startswith("file/api/") for t in ctx.users(i))})
 
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])

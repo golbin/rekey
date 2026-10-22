@@ -12,7 +12,6 @@ import re
 from collections import defaultdict
 
 from .i18n import _
-from .init import GROUP_DIRS, where
 from .util import bold, dim, ok, say
 
 
@@ -28,8 +27,7 @@ def env_of(rel: str) -> str:
     return {"production": "prod", "development": "dev"}.get(env.lower(), env.lower())
 
 
-def split(ctx, items: list[tuple[str, str]], group_dirs: list[str] = ()) -> int:
-    GROUP_DIRS.update(group_dirs)
+def split(ctx, items: list[tuple[str, str]]) -> int:
     taken = {name for _vault, name in ctx.items()}
     blocks, made = [], 0
     for vault, name in items:
@@ -41,7 +39,7 @@ def split(ctx, items: list[tuple[str, str]], group_dirs: list[str] = ()) -> int:
             continue
         groups = defaultdict(list)
         for t in ctx.users((vault, name)):
-            groups[where(t.rel)].append(t)
+            groups[ctx.project(t.rel)].append(t)
         if len(groups) < 2:
             continue
         prov, project, *purpose = name.split(".")

@@ -66,6 +66,7 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # 按名称
 rekey rotate tag:breach-2026           # 按 keys.toml 中的标签
 rekey rotate 'in:vercel/shop/*'        # 这些模板用到的全部密钥
+rekey rotate project:shop          # 一个项目用到的全部密钥（仓库、Railway 服务、Vercel 项目…）
 rekey rotate tag:breach-2026 --only openai   # 缩小范围：服务、项目（in:…）、标签
 ```
 

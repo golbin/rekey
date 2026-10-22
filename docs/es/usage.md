@@ -66,6 +66,7 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # por nombre
 rekey rotate tag:breach-2026           # por una etiqueta de keys.toml
 rekey rotate 'in:vercel/shop/*'        # todas las claves que usan estas plantillas
+rekey rotate project:shop          # todas las claves de un proyecto (su repo, servicio de Railway, proyecto de Vercel…)
 rekey rotate tag:breach-2026 --only openai   # acotar: un servicio, un proyecto (in:…), una etiqueta
 ```
 

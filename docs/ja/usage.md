@@ -66,6 +66,7 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # 名前のパターン
 rekey rotate tag:breach-2026           # keys.toml のタグ
 rekey rotate 'in:vercel/shop/*'        # これらのテンプレートが使うキーすべて
+rekey rotate project:shop          # ひとつのプロジェクトが使うキー全部（リポジトリ、Railway サービス、Vercel プロジェクト…）
 rekey rotate tag:breach-2026 --only openai   # 絞り込み：サービス、プロジェクト（in:…）、タグ
 ```
 
