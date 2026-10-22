@@ -46,6 +46,7 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
         ok(ctx.store.label)
         for vault in sorted({v for v, _name in items}):
             if ctx.store.has_vault(vault):
+                ok(_("vault '{vault}'", vault=vault))
                 continue
             fail(_("vault '{vault}' not found (or no access)", vault=vault))
             if fix and ask("    " + _("Create it now? (If you are joining a team, answer N and ask an admin for access)")):
@@ -57,6 +58,7 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
     needed = {t.kind for i in items for t in ctx.users(i)} | {PROVIDER_LOGIN.get(n.split(".")[0], "") for _vault, n in items}
     for name in sorted(needed & set(KINDS)):
         if logged_in(name):
+            ok(_("{name}: logged in", name=name))
             continue
         check, login = KINDS[name].login
         fail(_("{name}: login needed", name=name))

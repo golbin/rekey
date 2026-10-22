@@ -35,7 +35,7 @@ NAMES = [
     ("assemblyai", r"^ASSEMBLYAI_"), ("elevenlabs", r"^ELEVENLABS_"), ("cartesia", r"^CARTESIA_"), ("daily", r"^DAILY_API"),
     ("heygen", r"^HEYGEN"), ("tavily", r"^TAVILY_"), ("brave", r"^BRAVE"),
     ("supabase", r"SUPABASE_(SERVICE_ROLE|SECRET)_KEY$"), ("supabase-token", r"^SUPABASE_ACCESS_TOKEN$"),
-    ("cloudflare", r"^CLOUDFLARE_.*TOKEN$"), ("cloudflare-turn", r"TURN_KEY_API_TOKEN$"), ("resend", r"^RESEND_API_KEY$"),
+    ("cloudflare-turn", r"TURN_KEY_API_TOKEN$"), ("cloudflare", r"^CLOUDFLARE_.*TOKEN$"), ("resend", r"^RESEND_API_KEY$"),
     ("slack", r"SLACK_.*(TOKEN|SECRET)$|^SLACK_WEBHOOK"), ("polar", r"^POLAR_"),
     ("apple", r"^APNS_KEY$"), ("expo", r"^EXPO_ACCESS_TOKEN$"),
     ("fly", r"^FLY_API_"), ("vercel", r"^VERCEL_(ACCESS_)?TOKEN$"), ("github", r"^(GITHUB_PAT|GH_TOKEN)$"), ("sentry", r"^SENTRY_.*TOKEN$"),
@@ -49,8 +49,12 @@ NAMES = [
 # The value's own prefix beats the name (QUALITY_LLM_API_KEY may hold an OpenAI key).
 PREFIXES = [("sk-ant-", "anthropic"), ("sk-or-", "openrouter"), ("sk-", "openai"), ("AIza", "google-api-key"), ("re_", "resend"),
             ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github"), ("sk_live_", "stripe"), ("rk_live_", "stripe")]
-PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"), ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "CLOUDFLARE_R2_SECRET_ACCESS_KEY"),
-         ("other", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"), ("ncp", "NCP_ACCESS_KEY", "NCP_SECRET_KEY")]
+# Two variables that are one key: (provider, var, field, var, field).
+PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "access_key_id", "R2_SECRET_ACCESS_KEY", "secret_access_key"),
+         ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "access_key_id", "CLOUDFLARE_R2_SECRET_ACCESS_KEY", "secret_access_key"),
+         ("other", "S3_ACCESS_KEY_ID", "access_key_id", "S3_SECRET_ACCESS_KEY", "secret_access_key"),
+         ("ncp", "NCP_ACCESS_KEY", "access_key_id", "NCP_SECRET_KEY", "secret_access_key"),
+         ("cloudflare-turn", "CLOUDFLARE_TURN_KEY_ID", "key_id", "CLOUDFLARE_TURN_KEY_API_TOKEN", "credential")]
 NOTES = {
     "locked": "Encrypts or hashes data: changing it makes existing data unreadable. Add key versioning first.",
     "BETTER_AUTH_SECRET": "Changing it signs every user out.",
@@ -116,8 +120,9 @@ class Index:
                     found[(v, n)].setdefault(f, value)
         for item in items:
             f = found.get(item, {})
-            if "access_key_id" in f and "secret_access_key" in f:
-                value = f["access_key_id"] + "\0" + f["secret_access_key"]
+            pair = next(((fa, fb) for _p, _a, fa, _b, fb in PAIRS if fa in f and fb in f), None)
+            if pair:
+                value = f[pair[0]] + "\0" + f[pair[1]]
             elif f.get("credential_base64") and not f.get("credential"):
                 value = base64.b64decode(f["credential_base64"]).decode(errors="replace")
             else:
@@ -148,10 +153,10 @@ def project_of(rel: str) -> str:
 def classify(ix: Index, env: dict[str, str], *, settings: bool) -> dict[str, str]:
     """Template lines for one target's variables."""
     lines, used = {}, set()
-    for prov, a, b in PAIRS:
+    for prov, a, fa, b, fb in PAIRS:
         if env.get(a) and env.get(b):
             name = ix.item(prov, env[a].strip() + "\0" + env[b].strip())
-            lines[a], lines[b] = ix.ref(name, "access_key_id"), ix.ref(name, "secret_access_key")
+            lines[a], lines[b] = ix.ref(name, fa), ix.ref(name, fb)
             used |= {a, b}
     for var, value in env.items():
         value = (value or "").strip()            # a stray trailing newline must not split one key into two

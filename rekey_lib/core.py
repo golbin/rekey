@@ -47,6 +47,7 @@ class Ctx:
     # -- values
     def read(self, vault: str, name: str) -> Record | None:
         if f"vault:{vault}" not in self._cache:          # the whole vault in one go: one op call, not one per key
+            say(dim("  " + _("Reading the keys in '{vault}'…", vault=vault)))
             try:
                 recs = self.store.read_all(vault)
             except RekeyError:

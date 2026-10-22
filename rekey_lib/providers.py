@@ -52,6 +52,7 @@ class Provider:
     check: str = ""                    # GET url that answers 2xx for a working key; {key} is substituted
     header: str = "Authorization: Bearer {key}"
     admin: str = ""                    # issue() needs the admin key item rekey.<admin>
+    how: str = ""                      # what to click and which permissions, when it isn't obvious
 
 
 def stamp() -> str:
@@ -81,6 +82,10 @@ def from_browser(ctx, item: str, prov: Provider, old: Fields, fields: list[str],
         set_clipboard(name)
         if hint:
             say("    " + bold(_("Note")) + f" {hint}")
+        if prov.how:
+            say("    " + bold(prov.how))
+        tail = next(iter(old.values()), "")[-4:]
+        say("    " + _("Give it the same permissions as the old key") + (f" (…{tail})" if len(tail) == 4 else "") + ".")
         say("    " + _("Make a new key on the page. Name field: ⌘V →") + " " + bold(name))
         open_url(page)
         say(dim("    " + (page or _("(no page known for this service: add page = \"…\" in keys.toml and it opens next time)"))))
@@ -372,8 +377,10 @@ PROVIDERS: dict[str, Provider] = {
     "brave": P("Brave Search", "https://api-dashboard.search.brave.com/app/keys"),
     "sentry": P("Sentry", "https://sentry.io/settings/auth-tokens/", "sntrys_"),
     "github": P(_("GitHub token"), "https://github.com/settings/tokens", "(ghp_|github_pat_)"),
-    "railway": P(_("Railway token"), "https://railway.com/dashboard"),
-    "cloudflare-turn": P("Cloudflare TURN", "https://dash.cloudflare.com/?to=/:account/calls"),
+    "railway": P(_("Railway token"), "https://railway.com/dashboard",
+                 how="Project → Settings → Tokens → Create, in the same environment as the old token."),
+    "cloudflare-turn": P("Cloudflare TURN", "https://dash.cloudflare.com/?to=/:account/realtime/turn",
+                         how="Realtime → TURN Server → Create TURN key. Copy the API token first, then the Turn Token ID."),
     "slack": P(_("Slack app"), "https://api.slack.com/apps"),
     "ncp": P("NAVER Cloud", "https://www.ncloud.com/mypage/manage/authkey"),
     "expo": P("Expo", "https://expo.dev/settings/access-tokens"),

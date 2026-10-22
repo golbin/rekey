@@ -276,6 +276,8 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("Local .env files", "로컬 .env 파일", "本地 .env 文件", "ローカルの .env ファイル", "Archivos .env locales"),
     ("Files: {n}", "{n}개 파일", "{n} 个文件", "{n} 個のファイル", "Archivos: {n}"),
     ("Places: {n}", "{n}곳", "{n} 处", "{n} か所", "Lugares: {n}"),
+    ("vault '{vault}'", "볼트 '{vault}'", "保险库 '{vault}'", "保管庫 '{vault}'", "bóveda '{vault}'"),
+    ("Give it the same permissions as the old key", "권한은 옛 키와 같게 주세요", "权限与旧密钥保持一致", "権限は古いキーと同じにしてください", "Dale los mismos permisos que la clave anterior"),
     ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),
