@@ -46,7 +46,7 @@ rekey setup
 
 ## チームで初めて導入する場合
 
-空のチームデータリポジトリで一度だけ実行します。
+[サンプル](https://github.com/golbin/rekey-example)から始める（**Use this template** → 非公開リポジトリ）か、空のチームデータリポジトリで一度だけ次を実行します。
 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init

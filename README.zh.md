@@ -33,6 +33,7 @@ OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
 
 ## 指南
 
+0. [团队数据示例](https://github.com/golbin/rekey-example)：先看看长什么样，再点 **Use this template**
 1. [准备](docs/zh/setup.md)：10 分钟
 2. [使用方法](docs/zh/usage.md)
 3. 场景：[密钥泄露了](docs/zh/situations/key-leaked.md) · [平台被入侵了](docs/zh/situations/platform-breach.md) · [有成员离开了](docs/zh/situations/member-left.md)

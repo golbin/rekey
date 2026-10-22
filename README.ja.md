@@ -33,6 +33,7 @@ OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
 
 ## ガイド
 
+0. [チームデータのサンプル](https://github.com/golbin/rekey-example)：どんな形か見てから **Use this template** で開始
 1. [準備](docs/ja/setup.md)：10 分
 2. [使い方](docs/ja/usage.md)
 3. 状況別：[キーが漏れた](docs/ja/situations/key-leaked.md) · [プラットフォームが侵害された](docs/ja/situations/platform-breach.md) · [メンバーが抜けた](docs/ja/situations/member-left.md)

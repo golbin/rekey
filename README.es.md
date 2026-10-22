@@ -33,6 +33,7 @@ OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
 
 ## Guías
 
+0. [Datos de equipo de ejemplo](https://github.com/golbin/rekey-example): mira cómo son y luego **Use this template**
 1. [Preparación](docs/es/setup.md): 10 minutos
 2. [Uso](docs/es/usage.md)
 3. Situaciones: [Se filtró una clave](docs/es/situations/key-leaked.md) · [Hackearon una plataforma](docs/es/situations/platform-breach.md) · [Alguien dejó el equipo](docs/es/situations/member-left.md)

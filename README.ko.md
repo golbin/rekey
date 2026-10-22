@@ -33,6 +33,7 @@ OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
 
 ## 가이드
 
+0. [팀 데이터 예시](https://github.com/golbin/rekey-example): 어떻게 생겼는지 보고 **Use this template**으로 시작
 1. [처음 준비](docs/ko/setup.md): 10분
 2. [사용법](docs/ko/usage.md)
 3. 상황별: [키 하나가 유출됐다](docs/ko/situations/key-leaked.md) · [쓰는 플랫폼이 해킹당했다](docs/ko/situations/platform-breach.md) · [팀원이 나갔다](docs/ko/situations/member-left.md)

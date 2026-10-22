@@ -46,7 +46,7 @@ rekey setup
 
 ## 처음 도입하는 팀이라면
 
-빈 팀 데이터 저장소에서 한 번 실행합니다.
+[예시 저장소](https://github.com/golbin/rekey-example)에서 **Use this template**으로 비공개 저장소를 만들어 시작하거나, 빈 팀 데이터 저장소에서 아래를 한 번 실행합니다.
 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init

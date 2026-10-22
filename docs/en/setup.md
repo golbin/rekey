@@ -46,7 +46,7 @@ You're done when it says it is ready. `rotate` runs the same check every time it
 
 ## If your team is adopting rekey
 
-Run once, in an empty team data repo:
+Start from the [example](https://github.com/golbin/rekey-example) (**Use this template** → private repo), or run this once in an empty team data repo:
 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init

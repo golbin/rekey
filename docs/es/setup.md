@@ -46,7 +46,7 @@ Has terminado cuando diga que todo está listo. `rotate` hace la misma comprobac
 
 ## Si tu equipo empieza a usar rekey
 
-Ejecuta esto una vez, en un repositorio de datos del equipo vacío:
+Empieza desde el [ejemplo](https://github.com/golbin/rekey-example) (**Use this template** → repositorio privado), o ejecuta esto una vez en un repositorio de datos del equipo vacío:
 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init

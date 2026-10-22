@@ -46,7 +46,7 @@ rekey setup
 
 ## 如果团队第一次引入 rekey
 
-在空的团队数据仓库中运行一次：
+可以从[示例仓库](https://github.com/golbin/rekey-example)开始（**Use this template** → 私有仓库），或者在空的团队数据仓库中运行一次：
 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init
