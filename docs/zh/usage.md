@@ -47,7 +47,7 @@ rekey rotate openai.shop
    - 中途停下？再次运行同一命令即可，已完成的密钥会跳过。新密钥填错了？`rekey rotate <密钥> --redo`。
    - 吊销前想回退？`rekey undo <密钥>` 会把所有地方改回旧密钥并删除新密钥。
 4. 保存到 1Password。旧值会保留到吊销为止。
-5. 更新所有使用处。然后询问是否现在重新部署 Vercel production 和 Railway（默认：否），选是则等待部署正常。
+5. 更新所有使用处。然后逐个服务询问是否现在重新部署（默认：否），只部署你选是的，并等待其正常。
    - 如果重启会中断进行中的会话，选 N，之后用平常的方式或 `rekey deploy <模板>` 部署。
    - Supabase Edge Function、Fly、Worker 立即生效。GitHub Actions 从下次运行开始生效。
    - **读取 GCP Secret Manager 的服务需要手动重启**才会使用新密钥。

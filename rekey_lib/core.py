@@ -199,18 +199,18 @@ def resync_hint(rels: list[str]) -> str:
     return "rekey sync " + " ".join(f"targets/{r}.tpl" for r in dict.fromkeys(rels))
 
 
-def offer_deploy(ctx: Ctx, actions: list[tuple]) -> list[str] | None:
-    """Redeploying restarts live services, so it happens only when the person says so (default: no).
-    The deploy failures, or None when the redeploy is left for later."""
+def offer_deploy(ctx: Ctx, actions: list[tuple]) -> tuple[list[str], bool]:
+    """Redeploying restarts live services: each one only when the person says so (default: no).
+    Returns the deploy failures and whether every service was redeployed."""
     actions = list(dict.fromkeys(actions))
     if not actions or ctx.dry_run:
-        return []
-    rels = ["/".join(a) + ("/production" if a[0] == "vercel" else "") for a in actions]
-    say("\n" + _("The new values are set. They take effect when these redeploy:") + " " + ", ".join(rels))
-    if ctx.interactive and interactive() and ask(_("Redeploy now? (N: deploy later yourself)"), default=False):
-        return deploy(ctx, actions)
-    say("    " + _("Your own deploy works, or:") + " " + bold("rekey deploy " + " ".join(rels)))
-    return None
+        return [], True
+    rel = lambda a: "/".join(a) + ("/production" if a[0] == "vercel" else "")
+    say("\n" + _("The new values are set. Each service picks them up when it redeploys. One at a time (default: no):"))
+    chosen = [a for a in actions if ctx.interactive and interactive() and ask("  " + _("Redeploy {name} now?", name=bold(rel(a))), default=False)]
+    if later := [rel(a) for a in actions if a not in chosen]:
+        say("    " + _("Deploy these later your usual way, or:") + " " + bold("rekey deploy " + " ".join(later)))
+    return (deploy(ctx, chosen) if chosen else []), not later
 
 
 def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
@@ -326,7 +326,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         stopped = True
         warn(_("Stopping here. Finished keys stay as they are."))
         later += [i for i in todo if i not in done and i not in later]
-    problems += offer_deploy(ctx, actions) or []
+    problems += offer_deploy(ctx, actions)[0]
 
     say()
     step(_("Result"))
@@ -501,9 +501,9 @@ def undo(ctx: Ctx, items: list[Item]) -> int:
         ctx.write(*item, Record(rec.previous, previous=rec.fields,
                                 state={"meta": rec.state["revoke"], "revoke": rec.state.get("meta") or {}, "undo": True}))
         done.append(item)
-    deployed = offer_deploy(ctx, actions)
-    failed += deployed or []
-    if deployed is None and actions:             # services still run the new key: deleting it now would break them
+    failures, everywhere = offer_deploy(ctx, actions)
+    failed += failures
+    if not everywhere:                           # some services still run the new key: deleting it now would break them
         say("    " + _("After the deploy, delete the new keys:") + " " + bold("rekey revoke " + " ".join(i[1] for i in done)))
     elif not failed and done:
         revoke(ctx, [i for i in done])
