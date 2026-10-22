@@ -54,6 +54,7 @@ class Provider:
     header: str = "Authorization: Bearer {key}"
     admin: str = ""                    # issue() needs the admin key item rekey.<admin>
     how: str = ""                      # what to click and which permissions, when it isn't obvious
+    locate: Callable | None = None     # (ctx, item, old) -> the exact page for this key, when the API can't help
 
 
 def stamp() -> str:
@@ -236,6 +237,21 @@ def _supabase_ref(ctx, value: str) -> tuple[str, dict]:
     raise Unavailable(_("can't tell which Supabase project the old key belongs to"))
 
 
+def locate_supabase(ctx, item: tuple[str, str], old: Fields) -> str:
+    """The project the old key opens, among the Supabase projects the same templates mention."""
+    refs = {a or b for t in ctx.users(item) for raw in t.lines.values()
+            for a, b in re.findall(r"([a-z]{20})\.supabase\.co|postgres\.([a-z]{20})", raw)}
+    key = old.get("credential", "")
+    for ref in sorted(refs):
+        try:
+            status, _body = http("GET", f"https://{ref}.supabase.co/rest/v1/", headers={"apikey": key, "Authorization": f"Bearer {key}"})
+        except RekeyError:                     # a project that no longer exists
+            continue
+        if status < 300:
+            return f"https://supabase.com/dashboard/project/{ref}/settings/api-keys"
+    return ""
+
+
 def issue_supabase(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     ref, _key = _supabase_ref(ctx, old.get("credential", ""))
     k = _supabase(ctx, "POST", f"/v1/projects/{ref}/api-keys?reveal=true",
@@ -361,7 +377,8 @@ PROVIDERS: dict[str, Provider] = {
     "google-api-key": P(_("Google API key"), "https://aistudio.google.com/app/apikey", "AIza", issue_gcp_api_key, revoke_gcp_api_key,
                         "https://generativelanguage.googleapis.com/v1beta/models?key={key}", ""),
     "gcp-sa": P(_("GCP service account key"), "https://console.cloud.google.com/iam-admin/serviceaccounts", r"\{", issue_gcp_sa, revoke_gcp_sa),
-    "supabase": P("Supabase secret key", "https://supabase.com/dashboard/projects", "sb_secret_", issue_supabase, revoke_supabase),
+    "supabase": P("Supabase secret key", "https://supabase.com/dashboard/projects", "sb_secret_", issue_supabase, revoke_supabase,
+                  how="Secret keys → + Add new secret key → copy the sb_secret_… value.", locate=locate_supabase),
     "cloudflare": P(_("Cloudflare token"), "https://dash.cloudflare.com/profile/api-tokens", "", issue_cloudflare, revoke_cloudflare,
                     admin="cloudflare-admin"),
     "resend": P("Resend", "https://resend.com/api-keys", "re_", issue_resend, revoke_resend, admin="resend-admin"),

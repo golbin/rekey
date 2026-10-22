@@ -349,7 +349,13 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], li
     by_hand = new is None
     if by_hand:
         say(dim("    " + _("used in:") + " " + ", ".join(t.rel for t in users)))
-        new = from_browser(ctx, item[1], prov, old, need, m.get("note", ""), m.get("page", ""))
+        page = m.get("page", "")
+        if not page and prov.locate:
+            try:
+                page = prov.locate(ctx, item, old)
+            except RekeyError:
+                pass
+        new = from_browser(ctx, item[1], prov, old, need, m.get("note", ""), page)
     while (good := works(prov, new)) is False:
         warn(_("The new key doesn't work. It may be the wrong copy, or it lacks permissions."))
         if not by_hand:
