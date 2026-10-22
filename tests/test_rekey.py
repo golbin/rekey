@@ -161,6 +161,10 @@ class Flow(unittest.TestCase):
         again = self.store.read(*secret)
         self.assertNotEqual(again.fields, first.fields)
         self.assertEqual(again.previous, first.previous)
+        self.run_(core.undo, self.ctx(), [secret])                         # changed my mind: the old one back
+        back = self.store.read(*secret)
+        self.assertEqual(back.fields, first.previous)
+        self.assertFalse(back.previous)
 
 
     def test_one_key_per_project(self):

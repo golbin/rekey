@@ -435,8 +435,11 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
             msg = revoke_one(ctx, item, rec)
             if msg.startswith(MANUAL):
                 v = rec.previous.get("credential", "")
-                say(f"    {msg[len(MANUAL):]}" + ("  " + bold(_("ends in …{tail}", tail=v[-4:])) if len(v) > 12 and "\n" not in v else "")
-                    + dim("  (" + _("keep rekey-{key}-…, that is the new one", key=item[1]) + ")"))
+                tail = "  " + bold(_("ends in …{tail}", tail=v[-4:])) if len(v) > 12 and "\n" not in v else ""
+                if rec.state.get("undo"):                     # going back: the key to delete is the rekey-… one
+                    say("    " + _("Delete the new key rekey-{key}-… (the old one stays)", key=item[1]) + tail)
+                else:
+                    say(f"    {msg[len(MANUAL):]}" + tail + dim("  (" + _("keep rekey-{key}-…, that is the new one", key=item[1]) + ")"))
                 open_url(ctx.meta(item[1]).get("page") or prov.page)
                 if not ask("    " + _("Deleted it?")):
                     left.append(item[1])
@@ -448,10 +451,38 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
             left.append(item[1])
             continue
         rec.previous, rec.state["revoke"] = {}, None
+        rec.state.pop("undo", None)
         ctx.write(*item, rec)
     if left:
         warn(_("Left:") + " rekey revoke " + " ".join(left))
     return 1 if left else 0
+
+
+def undo(ctx: Ctx, items: list[Item]) -> int:
+    """Before the old key is revoked: put it back everywhere, then delete the new one."""
+    pending = [(i, r) for i in items if (r := ctx.read(*i)) and r.state.get("revoke") is not None and r.previous]
+    if not pending:
+        say(dim(_("Nothing to undo: only keys rotated and not yet revoked can go back.")))
+        return 0
+    say(bold(_("Back to the old key: {n}", n=len(pending))))
+    actions, failed, done = [], [], []
+    for item, rec in pending:
+        step(item[1])
+        a, f = sync(ctx, ctx.users(item), item=item, values=rec.previous)
+        actions += a
+        if f:
+            failed.append(item[1])
+            continue
+        # The new key is now the one to delete: if this stops here, `rekey revoke` finishes the job.
+        ctx.write(*item, Record(rec.previous, previous=rec.fields,
+                                state={"meta": rec.state["revoke"], "revoke": rec.state.get("meta") or {}, "undo": True}))
+        done.append(item)
+    failed += deploy(ctx, actions)
+    if not failed and done:
+        revoke(ctx, [i for i in done])
+    if failed:
+        warn(_("Left:") + " " + ", ".join(failed))
+    return 1 if failed else 0
 
 
 # ================================================================ import / diff

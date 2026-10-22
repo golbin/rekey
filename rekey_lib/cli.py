@@ -92,6 +92,11 @@ def cmd_revoke(args) -> int:
     return core.revoke(ctx, ctx.select(args.select, args.only), force=args.force)
 
 
+def cmd_undo(args) -> int:
+    ctx = ctx_for(args)
+    return core.undo(ctx, ctx.select(args.select, args.only))
+
+
 def cmd_import(args) -> int:
     ctx = ctx_for(args)
     return core.import_(ctx, ctx.select(args.select or ["all"]))
@@ -140,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)
+    cmd("undo", cmd_undo, _("before revoking: put the old key back everywhere and delete the new one"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
     cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))
