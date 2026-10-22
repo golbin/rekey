@@ -1,6 +1,6 @@
 # Uso
 
-Ejecuta los comandos dentro de la carpeta de datos del equipo. Los comandos que cambian cosas (`rotate`, `revoke`, `sync`, `import`) solo muestran lo que harían si añades `--dry-run`.
+Ejecuta los comandos dentro de la carpeta de datos del equipo. Los comandos que cambian cosas (`rotate`, `issue`, `revoke`, `sync`, `import`, `arrange`) solo muestran lo que harían si añades `--dry-run`.
 
 ## Crear un .env local
 
@@ -22,75 +22,83 @@ rekey init ~/code/shop --with-settings                   # todos los .env de una
 - Las claves se convierten en referencias `{{ op://… }}`. Si un valor ya es una clave de tus plantillas, se reutiliza esa clave.
 - Si la plantilla ya existe, solo se añaden las variables que faltan; las líneas que editaste no cambian.
 - Sin `--with-settings`, la configuración normal (puertos, URL…) no entra en las plantillas locales.
-- Después, `rekey import` guarda los valores nuevos en 1Password.
+- Después, `rekey arrange "Acme - {env}"` coloca las claves nuevas en la bóveda correcta y `rekey import` guarda sus valores en 1Password.
 
 ## Buscar claves
 
 ```bash
 rekey ls                     # todo: servicio, cómo se emite, número de lugares, etiquetas
-rekey ls 'openai.*'          # solo algunas
-rekey where openai.shop      # las plantillas y variables que usan esta clave
+rekey ls project:shop        # un proyecto
+rekey ls '*.openai'          # un servicio
+rekey where shop.openai      # las plantillas y variables que usan esta clave
 ```
 
 ## Rotar una clave
 
 ```bash
-rekey rotate openai.shop
+rekey rotate shop.openai
 ```
 
 1. Comprobación previa: lo que falte, como un inicio de sesión, se resuelve en el momento.
 2. Un resumen de lo que va a pasar; luego pregunta si empezar.
 3. La clave nueva:
    - **Automática:** se emite por API o se genera en local. Si falla (por ejemplo, por falta de permisos), rekey explica el motivo y pasa al navegador.
-   - **Navegador:** se abre una página. Pega el nombre en el campo de nombre con ⌘V (ya está en tu portapapeles), crea la clave y **cópiala**. rekey sigue en cuanto copias. Pulsa `s` para saltarla o `q` para parar.
-   - Si copias la clave anterior o una clave de otro servicio, te avisa. Si la clave nueva no funciona, puedes copiarla otra vez.
-   - ¿Te detuviste a medias? Ejecuta el mismo comando otra vez: las claves ya hechas se saltan. ¿La clave nueva quedó mal? `rekey rotate <clave> --redo`.
-   - ¿Cambias de idea antes de revocar? `rekey undo <clave>` vuelve a poner la clave anterior en todas partes y borra la nueva.
+   - **Navegador:** se abre una página que indica dónde hacer clic. Pega el nombre en el campo de nombre con ⌘V (ya está en tu portapapeles), da a la clave los mismos permisos que la anterior (se muestran sus últimos 4 caracteres), créala y **cópiala**. rekey sigue en cuanto copias. Pulsa `s` para saltarla o `q` para parar.
+   - Los códigos de inicio de sesión, la clave anterior o una clave de otro servicio no se aceptan como clave nueva.
+   - Una contraseña de base de datos va al final: la anterior deja de funcionar en cuanto se guarda la nueva.
 4. Se guarda en 1Password. El valor anterior se conserva hasta revocarlo.
-5. Se actualizan todos los lugares. Luego rekey pregunta servicio por servicio si redesplegarlo ahora (por defecto: no); solo despliega los que confirmes y espera a que estén sanos.
-   - Si reiniciar cortaría sesiones en curso, responde N y despliega luego a tu manera o con `rekey deploy <plantilla>`.
+5. Se actualizan todos los lugares. Luego rekey pregunta servicio por servicio si redesplegarlo ahora (por defecto: no). Si reiniciar cortaría sesiones en curso, responde N y despliega luego a tu manera o con `rekey deploy <plantilla>`.
    - Supabase Edge Functions, Fly y Workers lo aplican al instante. GitHub Actions lo usa desde la siguiente ejecución.
    - **Los servicios que leen GCP Secret Manager necesitan un reinicio** para usar la clave nueva.
-6. rekey pregunta si revocar ya la clave anterior. Responde N para observar un poco más, y después:
+6. Cuando todos los servicios se han redesplegado, rekey pregunta si revocar ya la clave anterior. Si no, después de tus despliegues:
 
 ```bash
-rekey revoke openai.shop
+rekey revoke shop.openai
 ```
 
-- Si el valor anterior todavía se usa en algún sitio, se detiene y muestra el comando que debes ejecutar.
+- Revoke se niega mientras algún lugar tenga todavía el valor anterior. Lee las variables, no lo que un servicio en marcha tiene cargado, así que revoca solo después de los despliegues.
 - En servicios sin API de revocación, rekey muestra los últimos 4 caracteres de la clave anterior y abre la página.
-- Si algo se interrumpe, ejecuta el mismo comando otra vez: continúa con lo que falta. Una clave rotada no se vuelve a rotar hasta revocar la anterior.
 - Si no se puede escribir en algunos lugares, el resto sigue adelante y al final se muestra el comando para reintentarlos.
 
-Si quieres revisar antes de que cambie nada, en dos pasos:
+### En dos pasos
+
+Para revisar antes de que cambie nada, emite primero y pon las claves en su sitio después:
 
 ```bash
-rekey issue project:shop     # claves nuevas solo en 1Password
-rekey apply project:shop     # luego ponerlas en su sitio; cada redespliegue se pregunta
+rekey issue project:shop     # claves nuevas solo en 1Password; ningún lugar cambia
+rekey apply project:shop     # escribirlas en todas partes; luego se pregunta cada redespliegue
 ```
+
+### Cuando algo sale mal
+
+- **Se detuvo a medias:** ejecuta el mismo comando otra vez. Las claves terminadas se saltan; una clave rotada no se vuelve a rotar hasta revocar la anterior.
+- **Entró un valor equivocado** (un código de inicio de sesión, otra clave): `rekey rotate <clave> --redo` vuelve a crear la clave nueva; la que hay que revocar sigue siendo la anterior original.
+- **Cambias de idea antes de revocar:** `rekey undo <clave>` vuelve a poner la clave anterior en todas partes y, cuando los servicios se han redesplegado, borra la nueva.
 
 ## Varias claves a la vez
 
 ```bash
-rekey rotate 'cartesia.*'              # por nombre
-rekey rotate tag:breach-2026           # por una etiqueta de keys.toml
-rekey rotate 'in:vercel/shop/*'        # todas las claves que usan estas plantillas
-rekey rotate project:shop          # todas las claves de un proyecto (su repo, servicio de Railway, proyecto de Vercel…)
-rekey rotate tag:breach-2026 --only openai   # acotar: un servicio, un proyecto (in:…), una etiqueta
+rekey rotate project:shop                  # todas las claves de un proyecto (su repo, servicio de Railway, proyecto de Vercel…)
+rekey rotate tag:breach-2026               # por una etiqueta de keys.toml
+rekey rotate 'in:railway/*'                # todas las claves que usan estas plantillas
+rekey rotate '*.cartesia'                  # por nombre
+rekey rotate tag:breach-2026 --only shop   # acotar: un proyecto o servicio, un nombre, tag:, in:, project:
 ```
 
-Primero van las automáticas; los pasos de navegador van al final, agrupados por servicio.
+Primero van las automáticas; después los pasos de navegador, agrupados por servicio; las contraseñas de base de datos van al final.
 
-### Una clave por proyecto
-
-Si varios proyectos comparten una clave, una filtración no dice de dónde salió y hay que cambiar todos. Sepárala:
+## Una bóveda por entorno, una clave por proyecto
 
 ```bash
-rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, …
-rekey rotate 'cartesia.*'     # cada proyecto recibe su propia clave
+rekey arrange "Acme - {env}" --dry-run     # ver el plan
+rekey arrange "Acme - {env}"
 ```
 
-Las claves que deben tener un solo valor no se tocan: tokens entre tus propios servicios, contraseñas de base de datos y claves locked.
+- Cada clave pasa a la bóveda del entorno que la usa: `Acme - Prod`, `Acme - Dev` o `Acme - Local`.
+- Una clave que comparten varios proyectos o entornos se separa, una por proyecto y entorno, con nombre `<project>.<service>`. Hasta el siguiente `rotate` las partes tienen el mismo valor; después, una filtración apunta a un solo proyecto.
+- No se separan: los tokens entre tus propios servicios (`.self.`), las contraseñas de base de datos, las claves locked y las claves pendientes de revocar.
+- Los elementos de 1Password se mueven y se renombran, nunca se borran. Revisa con `git diff` y haz commit.
+- Los datos del equipo anteriores a rekey 0.3 nombran las claves `<service>.<project>`; añade `--old-names` una vez para renombrarlas.
 
 ## Cambiar la configuración
 
@@ -98,8 +106,8 @@ Las plantillas de plataformas también contienen configuración normal.
 
 ```bash
 # edita targets/vercel/shop/production.tpl y luego
-rekey diff targets/vercel/shop/production.tpl            # compara con lo que está en producción
-rekey sync targets/vercel/shop/production.tpl --deploy   # escríbelo y vuelve a desplegar
+rekey diff targets/vercel/shop/production.tpl   # compara con lo que está en producción
+rekey sync targets/vercel/shop/production.tpl   # escríbelo; se pregunta el redespliegue
 git commit -am "shop: change APP_URL"
 ```
 
@@ -107,11 +115,11 @@ git commit -am "shop: change APP_URL"
 
 ## Añadir una clave
 
-1. Añade una línea en cada plantilla que la necesite. Nombra las claves `<servicio>.<proyecto>`; los tokens que comparten tus propias apps son `self.<proyecto>.<uso>`.
+1. Añade una línea en cada plantilla que la necesite. Nombra las claves `<project>.<service>`; los tokens que comparten tus propias apps son `<project>.self.<uso>`.
    ```
-   STRIPE_SECRET_KEY={{ op://Acme - Prod/stripe.shop/credential }}
+   STRIPE_SECRET_KEY={{ op://Acme - Prod/shop.stripe/credential }}
    ```
-2. Dale un valor: `rekey import stripe.shop` si el valor ya está en uso, o `rekey rotate stripe.shop` para emitir uno nuevo.
+2. Dale un valor: `rekey import shop.stripe` si el valor ya está en uso, o `rekey rotate shop.stripe` para emitir uno nuevo.
 3. `git commit`
 
 Para dejar de usar una clave en un sitio, borra su línea.
@@ -130,18 +138,20 @@ Para dejar de usar una clave en un sitio, borra su línea.
 | `github/<owner>/<repo>[/<entorno>]` | GitHub Actions secrets |
 | `fly/<app>`, `worker/<nombre>` | Fly, Cloudflare Workers |
 
-Solo se escriben las variables de la plantilla. Nada más cambia en el destino.
+Solo se escriben las variables de la plantilla. Nada más cambia en el destino. Una variable de Railway que referencia otro servicio (`${{ api.OPENAI_API_KEY }}`) nunca se sobrescribe: rekey se detiene y lo indica.
+
+**Nombres de claves**: `<project>.<service>[.<uso>]`. El servicio decide cómo se emite la clave (`shop.openai` → OpenAI); `self` significa que la genera rekey, `other` que una persona la emite en el navegador.
 
 **keys.toml** solo recoge excepciones:
 
 ```toml
-["self.shop.data-master-key"]
+["shop.self.data-master-key"]
 locked = "motivo"                 # rotate la salta (solo --force lo anula)
 note = "leer antes de rotar"      # se muestra en rotate y where
 tags = ["check", "retire"]        # check: rotate la salta / retire: queda fuera de "all"
 page = "https://…"                # página que se abre en el paso de navegador
 ```
 
-**Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en la misma bóveda, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
+**Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en cualquiera de tus bóvedas, normalmente la de Prod, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
 
 **Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo; por defecto, la carpeta más cercana hacia arriba que tenga `targets/` o `keys.toml`), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

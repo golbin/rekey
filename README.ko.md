@@ -6,8 +6,8 @@ API 키를 한 명령으로 재발급하고, 쓰이는 모든 곳(.env, Vercel, 
 
 ```bash
 pipx install git+https://github.com/golbin/rekey   # 설치
-rekey rotate 'openai.*'   # 새 키 발급 → 모든 사용처 교체 → 재배포 확인
-rekey revoke 'openai.*'   # 옛 키 폐기
+rekey rotate project:shop   # 새 키 발급 → 모든 사용처 교체 → 서비스마다 재배포 시점 선택
+rekey revoke project:shop   # 옛 키 폐기
 ```
 
 - **잊고 있던 키까지 찾습니다.** `rekey init`은 기억에 의존하지 않고 모든 .env 파일과 Vercel·Railway·Supabase·GCP를 직접 읽습니다. 같은 값은 하나로 묶으므로, 아무도 기억하지 못하는 프로젝트를 포함해 스무 곳에 복사된 키도 하나로 정리됩니다. rekey가 읽을 수 없는 곳(팀원의 PC, 외부 서비스 대시보드)은 템플릿에 한 줄만 적어 두면 다시는 잊지 않습니다.
@@ -20,7 +20,7 @@ rekey revoke 'openai.*'   # 옛 키 폐기
 
 | 무엇 | 어디에 |
 |---|---|
-| 키 값 | 1Password (항목 하나 = 키 하나) |
+| 키 값 | 1Password: 환경마다 볼트 하나(`Acme - Prod`, `Acme - Dev`, `Acme - Local`), 키마다 항목 하나, 이름은 `<프로젝트>.<서비스>` |
 | 키가 쓰이는 곳, 일반 설정값 | `targets/**.tpl`: 팀 비공개 저장소 |
 | 예외 정보 (잠금·태그·메모) | `keys.toml`: 팀 비공개 저장소 |
 
@@ -29,7 +29,7 @@ rekey revoke 'openai.*'   # 옛 키 폐기
 ```
 # targets/vercel/shop/production.tpl  →  Vercel 프로젝트 shop의 production 환경
 APP_URL=https://shop.example.com
-OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
 
 ## 가이드

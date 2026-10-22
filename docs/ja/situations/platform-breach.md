@@ -20,13 +20,15 @@ rekey init --vault "Acme - Prod" --source railway
 rekey ls 'in:railway/*' 'in:file/shop/api/*'
 ```
 
-**2. 同じ選択でローテーションする。**
+**2. 同じ選択でローテーションする。** キーが多ければプロジェクトごとに進めます。
 
 ```bash
-rekey rotate 'in:railway/*' 'in:file/shop/api/*'
+rekey rotate 'in:railway/*' 'in:file/shop/api/*' --only project:shop
 ```
 
-自動の処理が終わるとブラウザの手順が続きます。デプロイが正常と確認できたら、すぐに無効化してください。
+自動の処理が終わるとブラウザの手順が続きます。聞かれたら再デプロイし（またはいつもの方法で）、すぐに無効化してください：`rekey revoke 'in:railway/*' 'in:file/shop/api/*'`。
+
+Railway でほかのサービスを参照する変数（`${{ api.KEY }}`）は、そのサービスに従います。参照元をローテーションし、両方を再デプロイしてください。
 
 **3. プラットフォーム側の後始末**
 - そのプラットフォームのアカウントトークンやプロジェクトトークン（CI が使うもの）もローテーションします。たいてい `github/…` テンプレートにあります。

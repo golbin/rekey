@@ -6,8 +6,8 @@ API キーをコマンドひとつで再発行し、使っているすべての�
 
 ```bash
 pipx install git+https://github.com/golbin/rekey   # インストール
-rekey rotate 'openai.*'   # 新しいキーを発行 → すべての使用先を更新 → 再デプロイを確認
-rekey revoke 'openai.*'   # 古いキーを無効化
+rekey rotate project:shop   # 新しいキーを発行 → すべての使用先を更新 → 各サービスの再デプロイはタイミングを選べる
+rekey revoke project:shop   # 古いキーを無効化
 ```
 
 - **忘れていたキーまで見つけます。** `rekey init` は記憶に頼らず、すべての .env ファイルと Vercel・Railway・Supabase・GCP を直接読み、同じ値をひとつにまとめます。誰も覚えていないプロジェクトを含め 20 か所にコピーされたキーも 1 件に整理されます。rekey が読めない場所（チームメンバーの PC、外部サービスの管理画面）は、テンプレートに一行書いておけば二度と忘れません。
@@ -20,7 +20,7 @@ rekey revoke 'openai.*'   # 古いキーを無効化
 
 | 何を | どこに |
 |---|---|
-| キーの値 | 1Password（1 アイテム = 1 キー） |
+| キーの値 | 1Password：環境ごとに vault ひとつ（`Acme - Prod`、`Acme - Dev`、`Acme - Local`）、1 アイテム = 1 キー、名前は `<project>.<service>` |
 | 各キーの使用先と通常の設定値 | チームの非公開リポジトリの `targets/**.tpl` |
 | 例外情報（ロック・タグ・メモ） | チームの非公開リポジトリの `keys.toml` |
 
@@ -29,7 +29,7 @@ rekey revoke 'openai.*'   # 古いキーを無効化
 ```
 # targets/vercel/shop/production.tpl  →  Vercel プロジェクト "shop" の production 環境
 APP_URL=https://shop.example.com
-OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
 
 ## ガイド

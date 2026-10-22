@@ -20,13 +20,15 @@ rekey init --vault "Acme - Prod" --source railway
 rekey ls 'in:railway/*' 'in:file/shop/api/*'
 ```
 
-**2. 교체합니다.** 1에서 확인한 선택을 그대로 씁니다.
+**2. 교체합니다.** 1에서 확인한 선택을 그대로 씁니다. 키가 많으면 프로젝트 하나씩 하세요.
 
 ```bash
-rekey rotate 'in:railway/*' 'in:file/shop/api/*'
+rekey rotate 'in:railway/*' 'in:file/shop/api/*' --only project:shop
 ```
 
-자동 처리가 끝나면 브라우저 단계가 이어집니다. 배포가 정상으로 확인되면 바로 폐기하세요.
+자동 처리가 끝나면 브라우저 단계가 이어집니다. 재배포를 물으면 배포하고(또는 평소 방식으로), 바로 폐기하세요: `rekey revoke 'in:railway/*' 'in:file/shop/api/*'`.
+
+Railway에서 다른 서비스를 참조하는 변수(`${{ api.KEY }}`)는 그 서비스를 따라갑니다. 원본을 교체하고 둘 다 재배포하세요.
 
 **3. 플랫폼 쪽 정리**
 - 그 플랫폼의 계정 토큰·프로젝트 토큰(CI에서 쓰는 것)도 교체합니다. 보통 `github/…` 템플릿에 있습니다.

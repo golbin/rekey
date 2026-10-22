@@ -40,7 +40,7 @@ rekey setup
 
 Te dice lo que falta y lo resuelve en el momento:
 - Inicio de sesión en las CLI de las plataformas que uses (`vercel`, `railway`, `supabase`, `gcloud`, `gh`…): rekey ejecuta el comando de inicio de sesión y tú solo apruebas en el navegador.
-- Claves de administrador (opcional): con ellas, las claves de OpenAI, Cloudflare y Resend se emiten sin navegador.
+- Claves de administrador (opcional): con ellas, las claves de OpenAI, Cloudflare y Resend se emiten sin navegador. Se guardan en la bóveda de Prod.
 
 Has terminado cuando diga que todo está listo. `rotate` hace la misma comprobación cada vez que empieza.
 
@@ -51,11 +51,12 @@ Empieza desde el [ejemplo](https://github.com/golbin/rekey-example) (**Use this 
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init
 rekey init --vault "Acme - Prod" --source vercel --source supabase --source railway --source gcp:<proyecto>
-rekey import all        # guarda en 1Password los valores que se usan hoy
+rekey arrange "Acme - {env}"   # una bóveda por entorno, una clave por proyecto
+rekey import all               # guarda en 1Password los valores que se usan hoy
 git add . && git commit -m "rekey: initial templates"
 ```
 
-- `init` lee los archivos .env bajo `~/code` y las plataformas, y escribe las plantillas. Los valores iguales se agrupan en una sola clave.
-- Si una carpeta contiene varios proyectos (por ejemplo `~/code/clients/a`, `~/code/clients/b`), añade `--group-dirs clients` para que las claves se nombren según las carpetas de dentro.
-- Nunca cambia plantillas ni nombres de claves existentes, así que puedes volver a ejecutarlo con más `--source` sin riesgo.
+- `init` lee los archivos .env bajo `~/code` y las plataformas, y escribe las plantillas. Los valores iguales se agrupan en una sola clave, con nombre `<project>.<service>` según el proyecto que más la usa. Un proyecto es un repositorio git, un servicio de Railway o un proyecto de Vercel.
+- `arrange` mueve cada clave a la bóveda de su entorno (`Acme - Prod`, `Acme - Dev`, `Acme - Local`) y separa las claves que comparten varios proyectos o entornos, para que una clave filtrada apunte a un solo sitio. Da acceso a Dev y Local a todo el equipo; deja Prod para los pocos que lo necesitan.
+- `init` nunca cambia plantillas ni nombres de claves existentes, así que puedes volver a ejecutarlo con más `--source` sin riesgo.
 - Revisa el resultado con `git diff`. Las líneas bajo un comentario `# …: guessed` son variables de Vercel cuyo valor no se puede leer y que se emparejaron por nombre.

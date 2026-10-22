@@ -20,13 +20,15 @@ rekey init --vault "Acme - Prod" --source railway
 rekey ls 'in:railway/*' 'in:file/shop/api/*'
 ```
 
-**2. 用同样的选择进行轮换。**
+**2. 用同样的选择进行轮换。** 密钥很多时，一次处理一个项目：
 
 ```bash
-rekey rotate 'in:railway/*' 'in:file/shop/api/*'
+rekey rotate 'in:railway/*' 'in:file/shop/api/*' --only project:shop
 ```
 
-自动的处理完后接着是浏览器步骤。部署确认正常后，立即吊销。
+自动的处理完后接着是浏览器步骤。被问到时重新部署（或用平常的方式），然后立即吊销：`rekey revoke 'in:railway/*' 'in:file/shop/api/*'`。
+
+在 Railway 上，引用其他服务的变量（`${{ api.KEY }}`）跟随那个服务：轮换源头，两边都重新部署。
 
 **3. 平台侧的清理**
 - 同时轮换该平台的账号令牌和项目令牌（CI 使用的那些），通常在 `github/…` 模板中。

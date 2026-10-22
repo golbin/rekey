@@ -20,13 +20,15 @@ Si alguna vez subiste un .env local completo a esa plataforma, las claves de ese
 rekey ls 'in:railway/*' 'in:file/shop/api/*'
 ```
 
-**2. Rótalas** con los mismos selectores:
+**2. Rótalas** con los mismos selectores. Si son muchas, ve proyecto por proyecto:
 
 ```bash
-rekey rotate 'in:railway/*' 'in:file/shop/api/*'
+rekey rotate 'in:railway/*' 'in:file/shop/api/*' --only project:shop
 ```
 
-Los pasos de navegador vienen después de los automáticos. Cuando los despliegues estén sanos, revoca enseguida.
+Los pasos de navegador vienen después de los automáticos. Redespliega cuando te lo pida (o a tu manera habitual) y revoca enseguida: `rekey revoke 'in:railway/*' 'in:file/shop/api/*'`.
+
+En Railway, una variable que referencia otro servicio (`${{ api.KEY }}`) sigue a ese servicio: rota el origen y redespliega ambos.
 
 **3. Limpia el lado de la plataforma**
 - Rota también los tokens de cuenta y de proyecto de esa plataforma (los que usa la CI). Suelen estar en plantillas `github/…`.

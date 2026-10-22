@@ -6,8 +6,8 @@
 
 ```bash
 pipx install git+https://github.com/golbin/rekey   # 安装
-rekey rotate 'openai.*'   # 签发新密钥 → 更新所有使用处 → 确认重新部署
-rekey revoke 'openai.*'   # 吊销旧密钥
+rekey rotate project:shop   # 签发新密钥 → 更新所有使用处 → 由你决定各服务何时重新部署
+rekey revoke project:shop   # 吊销旧密钥
 ```
 
 - **连你忘了的密钥也能找到。** `rekey init` 不靠记忆：它直接读取所有 .env 文件以及 Vercel、Railway、Supabase、GCP，并把相同的值归为一个，所以复制到二十个地方（包括没人记得的项目）的密钥也会整理成一条。rekey 读不到的地方（同事的电脑、第三方后台），在模板里写一行，以后就不会再忘。
@@ -20,7 +20,7 @@ rekey revoke 'openai.*'   # 吊销旧密钥
 
 | 内容 | 位置 |
 |---|---|
-| 密钥值 | 1Password（一个条目 = 一个密钥） |
+| 密钥值 | 1Password：每个环境一个 vault（`Acme - Prod`、`Acme - Dev`、`Acme - Local`），一个条目 = 一个密钥，命名为 `<project>.<service>` |
 | 每个密钥的使用位置和普通配置 | 团队私有仓库中的 `targets/**.tpl` |
 | 例外信息（锁定、标签、备注） | 团队私有仓库中的 `keys.toml` |
 
@@ -29,7 +29,7 @@ rekey revoke 'openai.*'   # 吊销旧密钥
 ```
 # targets/vercel/shop/production.tpl  →  Vercel 项目 "shop" 的 production 环境
 APP_URL=https://shop.example.com
-OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
 
 ## 指南

@@ -40,7 +40,7 @@ rekey setup
 
 它会列出缺少的东西并当场解决：
 - 所用平台 CLI（`vercel`、`railway`、`supabase`、`gcloud`、`gh` 等）的登录：rekey 运行登录命令，你只需在浏览器中批准。
-- 管理员密钥（可选）：有了它，OpenAI、Cloudflare、Resend 的密钥无需浏览器即可自动签发。
+- 管理员密钥（可选）：有了它，OpenAI、Cloudflare、Resend 的密钥无需浏览器即可自动签发。它们保存在 Prod vault 中。
 
 显示准备完成即可。之后每次 `rotate` 开始时都会做同样的检查。
 
@@ -51,11 +51,12 @@ rekey setup
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init
 rekey init --vault "Acme - Prod" --source vercel --source supabase --source railway --source gcp:<项目>
-rekey import all        # 把当前在用的值存入 1Password
+rekey arrange "Acme - {env}"   # 每个环境一个 vault，每个项目一个密钥
+rekey import all               # 把当前在用的值存入 1Password
 git add . && git commit -m "rekey: initial templates"
 ```
 
-- `init` 读取 `~/code` 下的 .env 文件和各平台，生成模板。相同的值归为同一个密钥。
-- 如果某个文件夹里有多个项目（如 `~/code/clients/a`、`~/code/clients/b`），加上 `--group-dirs clients`，密钥会按其下的文件夹命名。
-- 已有的模板和密钥名不会被修改，之后加上更多 `--source` 再运行也是安全的。
+- `init` 读取 `~/code` 下的 .env 文件和各平台，生成模板。相同的值归为同一个密钥，按最常用它的项目命名为 `<project>.<service>`。一个项目指一个 git 仓库、一个 Railway 服务或一个 Vercel 项目。
+- `arrange` 把每个密钥移到其环境对应的 vault（`Acme - Prod`、`Acme - Dev`、`Acme - Local`），并拆分被多个项目或环境共用的密钥，这样密钥泄露时能指向一个地方。Dev 和 Local 给整个团队，Prod 只给少数需要的人。
+- `init` 不会修改已有的模板和密钥名，之后加上更多 `--source` 再运行也是安全的。
 - 生成后用 `git diff` 检查。带 `# …: guessed` 注释的行，是 Vercel 中无法读取值、按名称匹配的变量。

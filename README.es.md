@@ -6,8 +6,8 @@ Vuelve a emitir una clave de API con un solo comando, actualízala en todos los 
 
 ```bash
 pipx install git+https://github.com/golbin/rekey   # instalar
-rekey rotate 'openai.*'   # clave nueva → todos los lugares actualizados → despliegues verificados
-rekey revoke 'openai.*'   # clave anterior revocada
+rekey rotate project:shop   # claves nuevas → todos los lugares actualizados → tú eliges cuándo se redespliega cada servicio
+rekey revoke project:shop   # claves anteriores revocadas
 ```
 
 - **Encuentra las claves que olvidaste.** `rekey init` no depende de la memoria: lee todos los .env y Vercel, Railway, Supabase y GCP directamente, y agrupa los valores iguales, así que una clave copiada en veinte sitios, incluido un proyecto que nadie recuerda, queda como una sola entrada. Para los sitios que no puede leer (el portátil de un compañero, el panel de un tercero), añade una línea de plantilla una vez y no se volverá a olvidar.
@@ -20,7 +20,7 @@ rekey revoke 'openai.*'   # clave anterior revocada
 
 | Qué | Dónde |
 |---|---|
-| Valores de las claves | 1Password (un elemento por clave) |
+| Valores de las claves | 1Password: una bóveda por entorno (`Acme - Prod`, `Acme - Dev`, `Acme - Local`), un elemento por clave, con nombre `<project>.<service>` |
 | Dónde se usa cada clave y la configuración normal | `targets/**.tpl` en el repositorio privado del equipo |
 | Excepciones (bloqueos, etiquetas, notas) | `keys.toml` en el repositorio privado del equipo |
 
@@ -29,7 +29,7 @@ Las plantillas usan la sintaxis propia de 1Password, y la ruta del archivo indic
 ```
 # targets/vercel/shop/production.tpl  →  proyecto de Vercel "shop", production
 APP_URL=https://shop.example.com
-OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
 
 ## Guías

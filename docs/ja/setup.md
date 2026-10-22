@@ -40,7 +40,7 @@ rekey setup
 
 足りないものを一つずつ示し、その場で解決します。
 - 使っているプラットフォーム CLI（`vercel`、`railway`、`supabase`、`gcloud`、`gh` など）のログイン：rekey がログインコマンドを実行するので、ブラウザで承認するだけです。
-- 管理者キー（任意）：あると OpenAI・Cloudflare・Resend のキーをブラウザなしで自動発行します。
+- 管理者キー（任意）：あると OpenAI・Cloudflare・Resend のキーをブラウザなしで自動発行します。Prod の vault に保管します。
 
 準備完了と出れば終わりです。以後も `rotate` は開始のたびに同じ確認をします。
 
@@ -51,11 +51,12 @@ rekey setup
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init
 rekey init --vault "Acme - Prod" --source vercel --source supabase --source railway --source gcp:<プロジェクト>
-rekey import all        # いま使っている値を 1Password に保存
+rekey arrange "Acme - {env}"   # 環境ごとに vault ひとつ、プロジェクトごとにキーひとつ
+rekey import all               # いま使っている値を 1Password に保存
 git add . && git commit -m "rekey: initial templates"
 ```
 
-- `init` は `~/code` 配下の .env ファイルと各プラットフォームを読んでテンプレートを作ります。同じ値はひとつのキーにまとめます。
-- 複数のプロジェクトを入れたフォルダ（例：`~/code/clients/a`、`~/code/clients/b`）があれば `--group-dirs clients` を付けてください。その中のフォルダ名でキーに名前が付きます。
-- 既存のテンプレートとキー名は変更しないので、あとから `--source` を追加して再実行しても安全です。
+- `init` は `~/code` 配下の .env ファイルと各プラットフォームを読んでテンプレートを作ります。同じ値はひとつのキーにまとめ、いちばん多く使うプロジェクトに合わせて `<project>.<service>` と名付けます。プロジェクトとは git リポジトリ、Railway サービス、Vercel プロジェクトのことです。
+- `arrange` は各キーをその環境の vault（`Acme - Prod`、`Acme - Dev`、`Acme - Local`）に移し、複数のプロジェクトや環境で共有されたキーを分けます。これでキーが漏れても一か所に絞れます。Dev と Local はチーム全員に、Prod は必要な少数だけに渡してください。
+- `init` は既存のテンプレートとキー名を変更しないので、あとから `--source` を追加して再実行しても安全です。
 - 作成後は `git diff` で確認してください。`# …: guessed` のコメントが付いた行は、Vercel で値を読めず名前で対応付けた変数です。

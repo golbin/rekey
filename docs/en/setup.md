@@ -40,7 +40,7 @@ rekey setup
 
 It lists what is missing and fixes it on the spot:
 - Logins for the platform CLIs you use (`vercel`, `railway`, `supabase`, `gcloud`, `gh`…): rekey runs the login command; you approve in the browser.
-- Admin keys (optional): with these, OpenAI, Cloudflare and Resend keys are issued without the browser.
+- Admin keys (optional): with these, OpenAI, Cloudflare and Resend keys are issued without the browser. They are kept in the Prod vault.
 
 You're done when it says it is ready. `rotate` runs the same check every time it starts.
 
@@ -51,11 +51,12 @@ Start from the [example](https://github.com/golbin/rekey-example) (**Use this te
 ```bash
 mkdir ~/code/keys && cd ~/code/keys && git init
 rekey init --vault "Acme - Prod" --source vercel --source supabase --source railway --source gcp:<project>
-rekey import all        # store today's values in 1Password
+rekey arrange "Acme - {env}"   # one vault per environment, one key per project
+rekey import all               # store today's values in 1Password
 git add . && git commit -m "rekey: initial templates"
 ```
 
-- `init` reads the .env files under `~/code` and the platforms, and writes templates. Identical values become one key.
-- If a folder holds several projects (e.g. `~/code/clients/a`, `~/code/clients/b`), add `--group-dirs clients` so keys are named after the folders inside it.
-- Existing templates and key names are never changed, so running it again with more `--source`s is safe.
+- `init` reads the .env files under `~/code` and the platforms, and writes templates. Identical values become one key, named `<project>.<service>` after the project that uses it most. A project is a git repository, a Railway service, a Vercel project.
+- `arrange` moves each key to the vault of its environment (`Acme - Prod`, `Acme - Dev`, `Acme - Local`) and splits keys shared by several projects or environments, so a leaked key points at one place. Give your team Dev and Local; keep Prod to the few who need it.
+- Existing templates and key names are never changed by `init`, so running it again with more `--source`s is safe.
 - Read the result with `git diff`. Lines under a `# …: guessed` comment are Vercel variables whose values can't be read, matched by name.

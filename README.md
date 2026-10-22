@@ -6,8 +6,8 @@ Reissue an API key with one command, update it everywhere it is used (.env files
 
 ```bash
 pipx install git+https://github.com/golbin/rekey   # install
-rekey rotate 'openai.*'   # new key → every place updated → redeploys checked
-rekey revoke 'openai.*'   # old key revoked
+rekey rotate project:shop   # new keys → every place updated → you choose when each service redeploys
+rekey revoke project:shop   # old keys revoked
 ```
 
 - **Finds the keys you forgot.** `rekey init` doesn't rely on memory: it reads every .env file and Vercel, Railway, Supabase and GCP themselves, and groups identical values, so a key copied into twenty places, including a project nobody remembers, becomes one entry. For places it can't read (a teammate's laptop, a third-party dashboard), add one template line once and it is never forgotten again.
@@ -20,7 +20,7 @@ rekey revoke 'openai.*'   # old key revoked
 
 | What | Where |
 |---|---|
-| Key values | 1Password (one item per key) |
+| Key values | 1Password: one vault per environment (`Acme - Prod`, `Acme - Dev`, `Acme - Local`), one item per key, named `<project>.<service>` |
 | Where each key is used, plus plain settings | `targets/**.tpl` in your team's private repo |
 | Exceptions (locked, tags, notes) | `keys.toml` in your team's private repo |
 
@@ -29,7 +29,7 @@ Templates use 1Password's own syntax, and the file path says where the values go
 ```
 # targets/vercel/shop/production.tpl  →  Vercel project "shop", production
 APP_URL=https://shop.example.com
-OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
 
 ## Guides
