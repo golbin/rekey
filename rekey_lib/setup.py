@@ -86,7 +86,7 @@ def offer_admin_keys(ctx, items: list[tuple[str, str]]) -> None:
         if not ask("    " + _("Add it now? (N: one by one in the browser)")):
             continue
         try:
-            value = from_browser(ctx, f"rekey.{name}", Provider(name, page, prefix), {}, ["credential"])
+            value = from_browser(ctx, name, Provider(name, page, prefix), {}, ["credential"])
         except Skip:
             continue
         rec = Record(value)
