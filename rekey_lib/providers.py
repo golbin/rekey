@@ -66,10 +66,17 @@ def key_name(item: str, when: str = "") -> str:
     return re.sub(r"[^a-z0-9]+", "_", f"rekey {item} {when or stamp()}".lower()).strip("_")
 
 
+def admin_record(ctx, name: str, vault: str = ""):
+    """rekey.<name>: next to the keys it manages, or in any vault the templates use (e.g. only in Prod)."""
+    for v in dict.fromkeys([vault or ctx.vault, *sorted({v for v, _n in ctx.items()})]):
+        if v and (rec := ctx.read(v, f"rekey.{name}")) and rec.fields.get("credential"):
+            return rec
+    return None
+
+
 def admin_key(ctx, name: str) -> str:
-    """Admin keys live next to the keys they manage, as items named rekey.<name>."""
-    rec = ctx.read(ctx.vault, f"rekey.{name}")
-    if not rec or not rec.fields.get("credential"):
+    rec = admin_record(ctx, name)
+    if not rec:
         raise Unavailable(_("no admin key rekey.{name}", name=name))
     return rec.fields["credential"]
 

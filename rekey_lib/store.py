@@ -111,6 +111,14 @@ class OnePassword:
                 run(["op", "item", "create", "--vault", vault, "--template", path], timeout=60)
 
 
+    def move(self, vault: str, name: str, to_vault: str, to_name: str) -> None:
+        """Move and rename an item. Nothing is deleted for good: op keeps the original in Recently Deleted."""
+        if to_vault != vault:
+            run(["op", "item", "move", name, "--current-vault", vault, "--destination-vault", to_vault], stdin="y\n", timeout=60)
+        if to_name != name:
+            run(["op", "item", "edit", name, "--vault", to_vault, "--title", to_name], timeout=60)
+
+
 class FileStore:
     """A 0600 JSON file. For tests and for trying rekey without 1Password."""
 
@@ -141,9 +149,17 @@ class FileStore:
     def read_all(self, vault: str) -> dict[str, Record]:
         return {k.split("/", 1)[1]: Record(**d) for k, d in self._load().items() if k.startswith(vault + "/")}
 
+    def move(self, vault: str, name: str, to_vault: str, to_name: str) -> None:
+        data = self._load()
+        data[f"{to_vault}/{to_name}"] = data.pop(f"{vault}/{name}")
+        self._save(data)
+
     def write(self, vault: str, name: str, rec: Record, tags: list[str]) -> None:
         data = self._load()
         data[f"{vault}/{name}"] = rec.__dict__
+        self._save(data)
+
+    def _save(self, data: dict) -> None:
         fd = os.open(self.path + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as f:
             json.dump(data, f, indent=2)

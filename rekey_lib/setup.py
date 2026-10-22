@@ -7,7 +7,7 @@ import subprocess
 import sys
 from collections import Counter
 
-from .providers import Provider, Skip, from_browser
+from .providers import Provider, Skip, admin_record, from_browser
 from .store import Record
 from .targets import KINDS, logged_in
 from .i18n import _
@@ -82,7 +82,7 @@ def offer_admin_keys(ctx, items: list[tuple[str, str]]) -> None:
         if prov not in ADMIN or n < 2:
             continue
         name, page, prefix, how = ADMIN[prov]
-        if (rec := ctx.read(vault, f"rekey.{name}")) and rec.fields:
+        if admin_record(ctx, name, vault):
             continue
         say("\n  " + _("One admin key makes the {prov} keys ({n}) automatic ({how}).", n=n, prov=bold(prov), how=how))
         if not ask("    " + _("Add it now? (N: one by one in the browser)")):

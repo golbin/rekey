@@ -16,7 +16,7 @@ from collections import Counter
 from typing import Any, Callable
 
 from . import tpl
-from .providers import MANUAL, Skip, Stop, Unavailable, from_browser, key_name, provider, works
+from .providers import MANUAL, Skip, Stop, Unavailable, admin_record, from_browser, key_name, provider, works
 from .store import Record
 from .targets import BROKEN, DEPLOY, HEALTHY, kind
 from .i18n import _
@@ -136,8 +136,7 @@ def mode(item: Item, ctx: Ctx | None = None) -> str:
         return "auto"
     if ctx is None:
         return "admin"
-    rec = ctx.read(item[0], f"rekey.{p.admin}")
-    return "auto" if rec and rec.fields else "browser"
+    return "auto" if admin_record(ctx, p.admin, item[0]) else "browser"
 
 
 # ================================================================ reading current values

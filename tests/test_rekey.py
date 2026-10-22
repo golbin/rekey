@@ -191,6 +191,19 @@ class Flow(unittest.TestCase):
         self.run_(core.apply, self.ctx(), [secret])
         self.assertIn(self.store.read(*secret).fields["credential"], open(f"{self.root}/api/.env").read())
 
+    def test_arrange_one_vault_per_environment(self):
+        from rekey_lib.arrange import arrange
+        self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
+        secret = (V, "self.api.auth-secret")
+        self.run_(core.rotate, self.ctx(), [secret])                      # a record that has to move along
+        self.run_(arrange, self.ctx(), "Test - {env}")
+        ctx = self.ctx()
+        self.assertEqual({v for v, _n in ctx.items()}, {"Test - Local"})       # only .env files here
+        self.assertIn(("Test - Local", "openai.api"), ctx.items())
+        moved = [n for v, n in ctx.items() if n.startswith("self.") and ctx.read(v, n)]
+        self.assertTrue(moved)                                              # the 1Password record moved too
+        self.run_(core.sync, ctx, ctx.templates)                           # and every reference still resolves
+
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         write(f"{self.root}/api/.env", f"OPENAI_API_KEY={OPENAI}\nRUNNER_AUTH_SECRET=old-auth-secret-1\nPORT=3000\nSTRIPE_API_KEY=sk_test_abc123456789\n")
