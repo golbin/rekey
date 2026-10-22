@@ -163,6 +163,17 @@ class Flow(unittest.TestCase):
         self.assertEqual(again.previous, first.previous)
 
 
+    def test_one_key_per_project(self):
+        from rekey_lib.split import split
+        self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
+        shared = [i for i in self.ctx().items() if len({t.rel.split("/")[1] for t in self.ctx().users(i)}) > 1]
+        self.assertTrue(shared)
+        self.run_(split, self.ctx(), shared)
+        ctx = self.ctx()
+        projects = {i[1]: len({t.rel.split("/")[1] for t in ctx.users(i)}) for i in ctx.items()}
+        self.assertEqual(projects["self.api.auth-secret"], 2)        # our services share their own tokens
+        self.assertTrue(all(n == 1 for k, n in projects.items() if not k.startswith("self.")))
+
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         write(f"{self.root}/api/.env", f"OPENAI_API_KEY={OPENAI}\nRUNNER_AUTH_SECRET=old-auth-secret-1\nPORT=3000\nSTRIPE_API_KEY=sk_test_abc123456789\n")

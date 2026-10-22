@@ -104,6 +104,12 @@ def cmd_setup(args) -> int:
     return 0 if preflight(ctx, ctx.select(args.select or ["all"])) else 1
 
 
+def cmd_split(args) -> int:
+    from .split import split
+    ctx = ctx_for(args)
+    return split(ctx, ctx.select(args.select, args.only), [d for d in args.group_dirs.split(",") if d])
+
+
 def cmd_init(args) -> int:
     ctx = ctx_for(args)
     split = lambda specs: {n: p.split(",") for n, _, p in (s.partition("=") for s in specs)}
@@ -133,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
         (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
+    cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only,
+        (["--group-dirs"], {"default": "", "help": _("folders that hold several projects,... (keys are named after the folders inside)")}))
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
     cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))
