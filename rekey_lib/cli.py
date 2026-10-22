@@ -12,6 +12,7 @@ from . import core
 from .init import init
 from .providers import provider
 from .store import open_store
+from .i18n import _
 from .util import RekeyError, bold, dim, fail, say
 
 HOME = os.environ.get("REKEY_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,11 +24,11 @@ def ctx_for(args) -> core.Ctx:
 
 def cmd_ls(args) -> int:
     ctx = ctx_for(args)
-    rows = [("키", "서비스", "발급", "사용처", "태그")]
+    rows = [(_("key"), _("service"), _("issued"), _("places"), _("tags"))]
     for item in ctx.select(args.select or ["all"]):
         m = ctx.meta(item[1])
         tags = m.get("tags", []) + (["locked"] if m.get("locked") else [])
-        rows.append((item[1], provider(item[1]).label, {"self": "자동", "auto": "자동", "admin": "자동*", "browser": "브라우저"}[core.mode(item)],
+        rows.append((item[1], provider(item[1]).label, {"self": _("auto"), "auto": _("auto"), "admin": _("auto") + "*", "browser": _("browser")}[core.mode(item)],
                      str(len(ctx.users(item))), " ".join(tags)))
     width = lambda s: sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in s)
     w = [max(width(r[i]) for r in rows) for i in range(5)]
@@ -35,8 +36,8 @@ def cmd_ls(args) -> int:
         line = "  ".join(c + " " * (w[i] - width(c)) for i, c in enumerate(r)).rstrip()
         say(bold(line) if n == 0 else line)
     counts = Counter(r[2] for r in rows[1:])
-    say(dim(f"\n{len(rows) - 1}개 · " + " · ".join(f"{k} {n}" for k, n in counts.items())
-            + (" · * 관리자 키가 있으면 자동, 없으면 브라우저" if counts["자동*"] else "")))
+    say(dim("\n" + _("Keys: {n}", n=len(rows) - 1) + " · " + " · ".join(f"{k} {n}" for k, n in counts.items())
+            + (" · * " + _("automatic with an admin key, otherwise browser") if counts[_("auto") + "*"] else "")))
     return 0
 
 
@@ -93,14 +94,14 @@ def cmd_init(args) -> int:
     ctx = ctx_for(args)
     split = lambda specs: {n: p.split(",") for n, _, p in (s.partition("=") for s in specs)}
     return init(ctx, vault=args.vault, sources=args.source, tags=split(args.tag), retire=args.retire.split(",") if args.retire else [],
-                group_dirs=[d for d in args.group_dirs.split(",") if d])
+                group_dirs=[d for d in args.group_dirs.split(",") if d], paths=args.paths, settings=args.with_settings)
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="rekey", description="키를 한 번에 재발급·교체·폐기합니다. 자세한 내용은 README.md")
-    ap.add_argument("--no-input", action="store_true", help="사람이 필요한 단계는 건너뛰고 안내만")
+    ap = argparse.ArgumentParser(prog="rekey", description=_("Reissue, rotate and revoke API keys in one go. See README.md"))
+    ap.add_argument("--no-input", action="store_true", help=_("skip steps that need a person and only say what is left"))
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sel = "키 이름·glob, tag:<태그>, in:<템플릿 glob>, all"
+    sel = _("key name or glob, tag:<tag>, in:<template glob>, all")
 
     def cmd(name, fn, help_, *args):
         p = sub.add_parser(name, help=help_)
@@ -108,31 +109,33 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument(*a[0], **a[1])
         p.set_defaults(fn=fn)
 
-    dry = (["--dry-run"], {"action": "store_true", "help": "아무것도 바꾸지 않고 보여 주기"})
-    cmd("ls", cmd_ls, "키 목록", (["select"], {"nargs": "*", "help": sel}))
-    cmd("where", cmd_where, "키가 쓰이는 곳", (["select"], {"nargs": "+", "help": sel}))
-    cmd("rotate", cmd_rotate, "새 키 발급 → 1Password → 모든 사용처 → 재배포", (["select"], {"nargs": "+", "help": sel}), dry,
-        (["--force"], {"action": "store_true", "help": "잠긴 키(locked)·확인 필요 키(check)도"}))
-    cmd("revoke", cmd_revoke, "옛 키 폐기", (["select"], {"nargs": "+", "help": sel}), dry,
-        (["--force"], {"action": "store_true", "help": "옛 값을 아직 쓰는 곳이 있어도"}))
-    cmd("sync", cmd_sync, "템플릿을 대상에 반영 (설정 변경, 새 PC의 .env 만들기)", (["templates"], {"nargs": "+", "help": "템플릿 경로 또는 all"}),
-        dry, (["--deploy"], {"action": "store_true", "help": "반영 후 재배포"}))
-    cmd("diff", cmd_diff, "템플릿과 대상의 실제 값 비교", (["templates"], {"nargs": "+"}))
-    cmd("import", cmd_import, "지금 쓰는 값을 1Password에 등록 (교체 없이)", (["select"], {"nargs": "*", "help": sel}), dry)
-    cmd("setup", cmd_setup, "준비 점검 (빠진 것은 바로 해결)", (["select"], {"nargs": "*", "help": sel}))
-    cmd("init", cmd_init, "지금 있는 .env·플랫폼에서 템플릿 만들기 (있는 파일은 그대로)",
-        (["--vault"], {"required": True}),
+    dry = (["--dry-run"], {"action": "store_true", "help": _("show what would happen, change nothing")})
+    cmd("ls", cmd_ls, _("list keys"), (["select"], {"nargs": "*", "help": sel}))
+    cmd("where", cmd_where, _("where a key is used"), (["select"], {"nargs": "+", "help": sel}))
+    cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), dry,
+        (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}))
+    cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), dry,
+        (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
+    cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
+        dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
+    cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))
+    cmd("import", cmd_import, _("store the values in use today in 1Password (no rotation)"), (["select"], {"nargs": "*", "help": sel}), dry)
+    cmd("setup", cmd_setup, _("check readiness and fix what is missing"), (["select"], {"nargs": "*", "help": sel}))
+    cmd("init", cmd_init, _("write templates from today's .env files and platforms (existing files are kept)"),
+        (["paths"], {"nargs": "*", "help": _("only these .env files or folders (default: everything under the root)")}),
+        (["--vault"], {"help": _("1Password vault for new keys (default: the one your templates use)")}),
+        (["--with-settings"], {"action": "store_true", "help": _("also put plain settings of local .env files in the templates")}),
         (["--source"], {"action": "append", "default": [], "help": "vercel · supabase · railway · gcp:<project>"}),
-        (["--tag"], {"action": "append", "default": [], "help": "태그=템플릿경로접두어,..."}),
-        (["--retire"], {"default": "", "help": "안 쓰는 곳의 템플릿 경로 접두어,..."}),
-        (["--group-dirs"], {"default": "", "help": "여러 프로젝트를 담은 폴더 이름,... (키 이름을 그 아래 폴더로 짓기)"}))
+        (["--tag"], {"action": "append", "default": [], "help": _("tag=template path prefix,...")}),
+        (["--retire"], {"default": "", "help": _("template path prefixes of places no longer used,...")}),
+        (["--group-dirs"], {"default": "", "help": _("folders that hold several projects,... (keys are named after the folders inside)")}))
     args = ap.parse_args(argv)
     try:
         return args.fn(args)
     except (RekeyError, OSError) as e:
         fail(str(e))
-        say(dim("원인을 해결하고 같은 명령을 다시 실행하면 남은 것부터 이어 갑니다."))
+        say(dim(_("Fix the cause and run the same command again: it continues with what is left.")))
         return 2
     except KeyboardInterrupt:
-        say("\n중단했습니다. 같은 명령을 다시 실행하면 남은 것부터 이어 갑니다.")
+        say("\n" + _("Stopped. Run the same command again to continue with what is left."))
         return 130

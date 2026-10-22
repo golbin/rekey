@@ -12,7 +12,7 @@ rekey revoke 'openai.*'   # clave anterior revocada
 - No necesitas conocer cada servicio. Las claves que se pueden emitir por API se gestionan solas; para el resto, rekey abre la página correcta y solo tienes que crear la clave y **copiarla**.
 - Los valores de las claves nunca aparecen en pantalla. Solo se guardan en 1Password.
 - Python 3.11 o superior, solo la biblioteca estándar.
-- Por ahora los mensajes de la CLI están en coreano; están previstos mensajes en inglés.
+- Los mensajes siguen el idioma del sistema (English, 한국어, 中文, 日本語, Español). Usa `REKEY_LANG=es` para elegirlo.
 
 ## Cómo funciona
 

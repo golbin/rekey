@@ -12,7 +12,7 @@ rekey revoke 'openai.*'   # old key revoked
 - You don't need to know each service. Keys that can be issued by API are handled automatically; for the rest, rekey opens the right page and you just make the key and **copy** it.
 - Key values never appear on screen. They live only in 1Password.
 - Python 3.11+, standard library only.
-- The CLI messages are in Korean for now; English messages are planned.
+- Messages follow your system language (English, 한국어, 中文, 日本語, Español). Set `REKEY_LANG=en` to choose.
 
 ## How it works
 

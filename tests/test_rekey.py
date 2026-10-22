@@ -8,6 +8,7 @@ import unittest
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.environ["REKEY_LANG"] = "ko"       # the assertions below read Korean messages
 
 from rekey_lib import core, tpl  # noqa: E402
 from rekey_lib.init import init  # noqa: E402
@@ -156,6 +157,48 @@ class Flow(unittest.TestCase):
         self.run_(core.rotate, self.ctx(), [secret], force=True)
         self.assertEqual(self.store.read(*secret).previous, first.previous)      # the real old key stays on record
         self.assertIn("옛 키 폐기 대기", self.out.getvalue())
+
+
+    def test_init_one_file_adds_only_what_is_missing(self):
+        self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
+        write(f"{self.root}/api/.env", f"OPENAI_API_KEY={OPENAI}\nRUNNER_AUTH_SECRET=old-auth-secret-1\nPORT=3000\nSTRIPE_API_KEY=sk_test_abc123456789\n")
+        self.run_(init, self.ctx(), vault=None, sources=[], tags={}, retire=[], paths=[f"{self.root}/api/.env"], settings=True)
+        t = self.ctx().template("file/api/.env")
+        self.assertEqual(t.lines["PORT"], "3000")                                   # --with-settings
+        self.assertIn("op://Test Vault/openai.api/credential", t.lines["OPENAI_API_KEY"])   # same value → same key
+        self.assertIn("STRIPE_API_KEY", t.lines)                                     # the new key was added
+        self.assertFalse(os.path.exists(f"{self.home}/targets/file/web/.env.local.tpl.bak"))
+
+
+class Messages(unittest.TestCase):
+    def test_every_message_is_translated(self):
+        import ast
+        import glob
+        import re
+        from rekey_lib.init import NOTES
+        from rekey_lib.messages import ROWS
+
+        rows = {r[0]: r for r in ROWS}
+        used = set(NOTES.values())
+        for f in glob.glob(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rekey_lib", "*.py")):
+            for n in ast.walk(ast.parse(open(f).read())):
+                if isinstance(n, ast.Call) and getattr(n.func, "id", None) == "_" and n.args and isinstance(n.args[0], ast.Constant):
+                    used.add(n.args[0].value)
+        self.assertEqual(sorted(used - set(rows)), [], "messages without a translation row")
+        self.assertEqual(sorted(set(rows) - used), [], "translation rows no code uses")
+        for row in ROWS:
+            holes = [sorted(re.findall(r"\{(\w+)\}", text)) for text in row]
+            self.assertTrue(all(h == holes[0] for h in holes), f"placeholders differ: {row[0]}")
+
+    def test_each_language_speaks(self):
+        import subprocess
+        rekey = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rekey")
+        for lang, word in (("en", "list keys"), ("ko", "키 목록"), ("zh", "列出密钥"), ("ja", "キーの一覧"), ("es", "lista las claves")):
+            out = subprocess.run([rekey, "--help"], capture_output=True, text=True, env={**os.environ, "REKEY_LANG": lang}).stdout
+            self.assertIn(word, out, lang)
+        out = subprocess.run([rekey, "--help"], capture_output=True, text=True,
+                             env={k: v for k, v in os.environ.items() if k != "REKEY_LANG"} | {"LANG": "ja_JP.UTF-8"}).stdout
+        self.assertIn("キーの一覧", out)
 
 
 if __name__ == "__main__":

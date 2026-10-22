@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 
 from . import tpl
 from .targets import _vercel, parse_dotenv, railway_bin, read_vercel
+from .i18n import _
 from .util import RekeyError, dim, fail, ok, run, say, step
 
 SKIP_DIRS = {"node_modules", ".git", ".next", "dist", "build", ".venv", "venv", "Pods", ".turbo", ".expo", "target", "third_party"}
@@ -51,9 +52,9 @@ PREFIXES = [("sk-ant-", "anthropic"), ("sk-or-", "openrouter"), ("sk-", "openai"
 PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"), ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "CLOUDFLARE_R2_SECRET_ACCESS_KEY"),
          ("other", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"), ("ncp", "NCP_ACCESS_KEY", "NCP_SECRET_KEY")]
 NOTES = {
-    "locked": "데이터 암호화·해시 키: 바꾸면 기존 데이터를 읽거나 검증할 수 없습니다. 키 버전 롤오버를 먼저 만드세요.",
-    "BETTER_AUTH_SECRET": "바꾸면 모든 사용자가 다시 로그인해야 합니다.",
-    "legacy": "레거시 JWT service_role 키. 새 secret key는 JWT가 아니라서, 이 값을 Bearer JWT로 쓰는 코드가 있으면 깨집니다.",
+    "locked": "Encrypts or hashes data: changing it makes existing data unreadable. Add key versioning first.",
+    "BETTER_AUTH_SECRET": "Changing it signs every user out.",
+    "legacy": "Legacy JWT service_role key. The new secret keys are not JWTs: code that sends this as a Bearer JWT will break.",
 }
 
 
@@ -67,7 +68,7 @@ def provider_of(var: str, value: str) -> str | None:
 
 
 def looks_secret(var: str, value: str) -> bool:
-    if provider_of(var, value) or any(value.startswith(p) for p, _ in PREFIXES):
+    if provider_of(var, value) or any(value.startswith(p) for p, _prov in PREFIXES):
         return True
     if "-----BEGIN" in value or '"private_key"' in value or re.search(r"://[^/@\s]+:[^/@\s]+@", value):
         return True
@@ -192,14 +193,29 @@ def env_files(root: str):
                 yield os.path.join(dp, fn)
 
 
-def from_files(ix: Index, root: str, home: str) -> dict[str, dict[str, str]]:
+def chosen_files(root: str, paths: list[str]):
+    """Every .env file under root, or only the given files and folders."""
+    if not paths:
+        yield from env_files(root)
+    for p in map(os.path.abspath, paths):
+        if not p.startswith(os.path.abspath(root) + os.sep):
+            raise RekeyError(_("{path} is outside {root} (set REKEY_ROOT)", path=p, root=root))
+        if os.path.isdir(p):
+            yield from env_files(p)
+        elif os.path.isfile(p):
+            yield p
+        else:
+            raise RekeyError(_("no such file: {path}", path=p))
+
+
+def from_files(ix: Index, root: str, home: str, paths: list[str] = (), settings: bool = False) -> dict[str, dict[str, str]]:
     out = {}
-    for path in env_files(root):
+    for path in chosen_files(root, list(paths)):
         rel = os.path.relpath(path, root)
         if rel.startswith(os.path.relpath(home, root)) or "/.vercel/" in rel:
             continue
         with open(path, errors="ignore") as f:
-            lines = classify(ix, parse_dotenv(f.read()), settings=False)
+            lines = classify(ix, parse_dotenv(f.read()), settings=settings)
         if lines:
             out[f"file/{rel}"] = lines
     return out
@@ -225,10 +241,10 @@ def from_vercel(ix: Index, ctx, files: dict[str, dict[str, str]], root: str) -> 
                 guess = next((tl[var] for d in linked.get(project, []) for rel, tl in files.items()
                               if rel.startswith(f"file/{d}/") and var in tl), None)
                 if guess:
-                    lines["# " + var] = f"# {var}: Vercel에서 값을 읽을 수 없어, 연결된 로컬 폴더의 .env와 같은 키로 추정"
+                    lines["# " + var] = f"# {var}: guessed — Vercel hides this value; matched by name to the linked local .env"
                     lines[var] = guess
                 else:
-                    lines[var] = f"# {var}: Vercel에서 값을 읽을 수 없는 sensitive 변수 (관리 안 함)"
+                    lines[var] = f"# {var}: sensitive in Vercel, value unknown (not managed)"
             if lines:
                 out[f"vercel/{project}/{env}"] = lines
     return out
@@ -248,7 +264,7 @@ def from_supabase(ix: Index, ctx) -> dict[str, dict[str, str]]:
                 if v.startswith("eyJ"):
                     ix.notes[hit].add("legacy")
         rows = json.loads(run(["supabase", "secrets", "list", "--project-ref", ref, "-o", "json"], check=False).stdout or "[]")
-        lines = {r["name"]: ix.ref(ix.by_value[r["value"]]) if r.get("value") in ix.by_value else f"# {r['name']}: 값을 알 수 없는 secret"
+        lines = {r["name"]: ix.ref(ix.by_value[r["value"]]) if r.get("value") in ix.by_value else f"# {r['name']}: value unknown (not managed)"
                  for r in rows if not r["name"].startswith("SUPABASE_")}
         if lines:
             out[f"supabase/{ref}"] = lines
@@ -296,16 +312,16 @@ def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
     uses = defaultdict(list)
     for rel, lines in found.items():
         for var, raw in lines.items():
-            for _, name, _ in tpl.REF.findall(raw):
+            for _vault, name, _field in tpl.REF.findall(raw):
                 uses[name].append((where(rel), var))
     names, taken = {}, set(ix.fixed)
     for old in sorted(uses, key=lambda n: -len(uses[n])):
         if old in ix.fixed:
             continue
         prov = old.split(".")[0]
-        top = Counter(p for p, _ in uses[old]).most_common()
+        top = Counter(p for p, _var in uses[old]).most_common()
         top = sorted(top, key=lambda pc: (-pc[1], pc[0]))[0][0]
-        var = Counter(v for _, v in uses[old]).most_common(1)[0][0]
+        var = Counter(v for _proj, v in uses[old]).most_common(1)[0][0]
         base = f"{prov}.{ix.label.get(old) or top}"
         if prov in ("self", "other"):
             base += "." + var
@@ -319,14 +335,19 @@ def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
 
 
 
-def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], retire: list[str],
-         group_dirs: list[str] = ()) -> int:
+def init(ctx, *, vault: str | None, sources: list[str], tags: dict[str, list[str]], retire: list[str],
+         group_dirs: list[str] = (), paths: list[str] = (), settings: bool = False) -> int:
+    """Without paths: every .env file under the root; existing templates are left alone.
+    With paths: only those files and folders; existing templates get the variables they lack."""
     GROUP_DIRS.update(group_dirs)
+    vault = vault or next(iter(Counter(v for v, _name in ctx.items()).most_common(1)), (None,))[0]
+    if not vault:
+        raise RekeyError(_("Say which 1Password vault to use: --vault \"Acme - Prod\""))
     ix = Index(vault)
     ix.seed(ctx)
-    step("로컬 .env 파일")
-    found = from_files(ix, ctx.root, ctx.home)
-    ok(f"{len(found)}개 파일")
+    step(_("Local .env files"))
+    found = from_files(ix, ctx.root, ctx.home, paths, settings)
+    ok(_("Files: {n}", n=len(found)))
     for src in sources:
         step(src)
         try:
@@ -339,9 +360,9 @@ def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], ret
             elif src.startswith("gcp:"):
                 part = from_gcp(ix, src[4:])
             else:
-                raise RekeyError(f"모르는 소스: {src}")
+                raise RekeyError(_("unknown source: {src}", src=src))
             found |= part
-            ok(f"{len(part)}곳")
+            ok(_("Places: {n}", n=len(part)))
         except RekeyError as e:
             fail(f"{src}: {e}")
 
@@ -351,20 +372,33 @@ def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], ret
             for var, raw in lines.items():
                 lines[var] = raw.replace(f"/{old}/", f"/{new}/")
 
-    written = 0
+    written = added = 0
     for rel, lines in sorted(found.items()):
         path = os.path.join(ctx.home, "targets", rel + ".tpl")
+        text = "".join(v + "\n" if v.startswith("# ") else f"{k}={v}\n" for k, v in lines.items())
         if os.path.exists(path):
+            if not paths:
+                continue
+            with open(path) as f:
+                have = f.read()
+            have_vars = set(tpl.parse(have, rel).lines)
+            new = [line for line in text.splitlines(True) if line.split("=", 1)[0] not in have_vars and line not in have]
+            if new:
+                with open(path, "a") as f:
+                    f.write(("" if have.endswith("\n") or not have else "\n") + "".join(new))
+                added += len(new)
+                say(f"  + targets/{rel}.tpl  " + dim(_("lines added: {n}", n=len(new))))
             continue
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
-            f.write("".join(v + "\n" if v.startswith("# ") else f"{k}={v}\n" for k, v in lines.items()))
+            f.write(text)
+        say(f"  + targets/{rel}.tpl")
         written += 1
 
     users = defaultdict(set)
     for rel, lines in found.items():
         for raw in lines.values():
-            for _, name, _ in tpl.REF.findall(raw):
+            for _vault, name, _field in tpl.REF.findall(raw):
                 users[name].add(rel)
     keys_path = os.path.join(ctx.home, "keys.toml")
     have = open(keys_path).read() if os.path.exists(keys_path) else ""
@@ -380,8 +414,8 @@ def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], ret
             t.append("check")
         entry = []
         if "locked" in notes:
-            entry.append(f'locked = "{NOTES["locked"]}"')
-        note = " ".join(NOTES[n] for n in sorted(notes) if n in NOTES and n != "locked")
+            entry.append(f'locked = "{_(NOTES["locked"])}"')
+        note = " ".join(_(NOTES[n]) for n in sorted(notes) if n in NOTES and n != "locked")
         if note:
             entry.append(f'note = "{note}"')
         if t:
@@ -390,6 +424,6 @@ def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], ret
             blocks.append(f'["{name}"]\n' + "\n".join(entry) + "\n")
     with open(keys_path, "a") as f:
         f.write("\n".join(blocks))
-    ok(f"템플릿 {written}개 새로 씀 · 키 {len(users)}개 · keys.toml 항목 {len(blocks)}개 추가")
-    say(dim("  다음: rekey ls  ·  git diff  ·  rekey import all (현재 값을 1Password로)"))
+    ok(_("New templates: {w} · lines added: {a} · keys: {k} · keys.toml entries added: {b}", w=written, a=added, k=len(users), b=len(blocks)))
+    say(dim("  " + _("Next: rekey ls · git diff · rekey import all (today's values into 1Password)")))
     return 0

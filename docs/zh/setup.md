@@ -61,4 +61,4 @@ git add . && git commit -m "rekey: initial templates"
 - `init` 读取 `~/code` 下的 .env 文件和各平台，生成模板。相同的值归为同一个密钥。
 - 如果某个文件夹里有多个项目（如 `~/code/clients/a`、`~/code/clients/b`），加上 `--group-dirs clients`，密钥会按其下的文件夹命名。
 - 已有的模板和密钥名不会被修改，之后加上更多 `--source` 再运行也是安全的。
-- 生成后用 `git diff` 检查。带 `# … 추정`（"推测"）注释的行，是 Vercel 中无法读取值、按名称匹配的变量。
+- 生成后用 `git diff` 检查。带 `# …: guessed` 注释的行，是 Vercel 中无法读取值、按名称匹配的变量。

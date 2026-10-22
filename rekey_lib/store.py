@@ -15,6 +15,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
+from .i18n import _
 from .util import RekeyError, have, private_file, run
 
 
@@ -34,13 +35,13 @@ class OnePassword:
 
     def check(self) -> str | None:
         if not have("op"):
-            return "1Password CLI 설치 필요: brew install 1password-cli"
+            return _("Install the 1Password CLI: brew install 1password-cli")
         try:
             if run(["op", "vault", "list"], check=False, timeout=10).returncode == 0:
                 return None
         except RekeyError:
             pass
-        return "1Password 앱 → 설정 → 개발자 → '1Password CLI와 통합'을 켜세요"
+        return _("In the 1Password app: Settings → Developer → turn on 'Integrate with 1Password CLI'")
 
     def has_vault(self, vault: str) -> bool:
         return run(["op", "vault", "get", vault], check=False, timeout=30).returncode == 0
@@ -53,7 +54,7 @@ class OnePassword:
         if p.returncode:
             if "isn't an item" in p.stderr or "not found" in p.stderr.lower():
                 return None
-            raise RekeyError(f"1Password에서 {name} 읽기 실패: {p.stderr.strip()[-150:]}")
+            raise RekeyError(_("couldn't read {name} from 1Password:", name=name) + " " + p.stderr.strip()[-150:])
         return json.loads(p.stdout)
 
     def read(self, vault: str, name: str) -> Record | None:
@@ -82,7 +83,7 @@ class OnePassword:
             "title": name,
             "category": "API_CREDENTIAL",
             "tags": sorted({"rekey", *tags}),
-            "sections": [{"id": "previous", "label": "previous (폐기 대기)"}, {"id": "rekey", "label": "rekey"}],
+            "sections": [{"id": "previous", "label": "previous (waiting to be revoked)"}, {"id": "rekey", "label": "rekey"}],
             "fields": [f(k, v) for k, v in rec.fields.items()]
                       + [f(k, v, "previous") for k, v in rec.previous.items()]
                       + [f("state", json.dumps(rec.state, ensure_ascii=False), "rekey", "STRING")],
@@ -98,7 +99,7 @@ class OnePassword:
 class FileStore:
     """A 0600 JSON file. For tests and for trying rekey without 1Password."""
 
-    label = "로컬 저장소"
+    label = _("local file store")
 
     def __init__(self, path: str):
         self.path = os.path.expanduser(path)

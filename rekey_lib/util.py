@@ -16,6 +16,8 @@ import urllib.parse
 import urllib.request
 from typing import Any, Iterator
 
+from .i18n import _
+
 
 class RekeyError(Exception):
     """An error whose message is meant for the person running rekey."""
@@ -76,13 +78,13 @@ def run(cmd: list[str], *, stdin: str | None = None, cwd: str | None = None,
     try:
         p = subprocess.run(cmd, input=stdin, cwd=cwd, capture_output=True, text=True, timeout=timeout)
     except FileNotFoundError:
-        raise RekeyError(f"`{cmd[0]}`이(가) 설치되어 있지 않습니다")
+        raise RekeyError(_("`{cmd}` is not installed", cmd=cmd[0]))
     except subprocess.TimeoutExpired:
-        raise RekeyError(f"`{' '.join(cmd[:3])}` 시간 초과")
+        raise RekeyError(_("`{cmd}` timed out", cmd=" ".join(cmd[:3])))
     if check and p.returncode:
         # These CLIs never echo stdin, so their stderr is safe to show.
         tail = (p.stderr or p.stdout).strip().splitlines()[-4:]
-        raise RekeyError(f"`{' '.join(cmd[:4])}` 실패: " + " / ".join(tail))
+        raise RekeyError(_("`{cmd}` failed:", cmd=" ".join(cmd[:4])) + " " + " / ".join(tail))
     return p
 
 
@@ -149,7 +151,7 @@ def ask(question: str, default: bool = True) -> bool:
     if not interactive():
         return False
     ans = input(question + (" [Y/n] " if default else " [y/N] ")).strip().lower()
-    return default if not ans else ans in ("y", "yes", "ㅇ", "네", "응")
+    return default if not ans else ans in ("y", "yes", "ㅇ", "네", "응", "是", "好", "はい", "s", "si", "sí")
 
 
 def open_url(url: str) -> None:

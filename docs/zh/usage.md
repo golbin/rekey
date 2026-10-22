@@ -12,6 +12,18 @@ rekey sync targets/file/shop/web/.env.local.tpl
 - 本地模板里**只有密钥**。端口等本地配置请自己填写，或参考项目的 `.env.example`。
 - 团队共用的本地配置，在模板中加一行 `KEY=值`，下次 `sync` 起会一起写入。
 
+## 从现有 .env 生成模板
+
+```bash
+rekey init ~/code/shop/web/.env.local                   # 一个文件
+rekey init ~/code/shop --with-settings                   # 文件夹下所有 .env，包含普通配置
+```
+
+- 密钥会变成 `{{ op://… }}` 引用。如果某个值已经是模板中的密钥，就沿用那个密钥。
+- 模板已存在时，只追加缺少的变量，你改过的行保持不变。
+- 不加 `--with-settings` 时，本地模板不包含普通配置（端口、URL 等）。
+- 然后用 `rekey import` 把新值存入 1Password。
+
 ## 查找密钥
 
 ```bash
@@ -109,4 +121,4 @@ page = "https://…"              # 浏览器步骤要打开的页面
 
 **管理员密钥**：在同一个 vault 中有 `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（用于吊销）条目时，这些服务会自动处理。`rekey setup` 会帮你添加。
 
-**环境变量**：`REKEY_HOME`（团队数据文件夹）、`REKEY_ROOT`（`file/` 的基准文件夹，默认是 `REKEY_HOME` 的上一级）、`REKEY_STORE=file:<路径>`（用文件代替 1Password，用于测试）、`REKEY_NO_BROWSER=1`
+**环境变量**：`REKEY_HOME`（团队数据文件夹）、`REKEY_ROOT`（`file/` 的基准文件夹，默认是 `REKEY_HOME` 的上一级）、`REKEY_STORE=file:<路径>`（用文件代替 1Password，用于测试）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）

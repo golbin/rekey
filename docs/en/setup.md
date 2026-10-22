@@ -61,4 +61,4 @@ git add . && git commit -m "rekey: initial templates"
 - `init` reads the .env files under `~/code` and the platforms, and writes templates. Identical values become one key.
 - If a folder holds several projects (e.g. `~/code/clients/a`, `~/code/clients/b`), add `--group-dirs clients` so keys are named after the folders inside it.
 - Existing templates and key names are never changed, so running it again with more `--source`s is safe.
-- Read the result with `git diff`. Lines under a `# … 추정` ("guessed") comment are Vercel variables whose values can't be read, matched by name.
+- Read the result with `git diff`. Lines under a `# …: guessed` comment are Vercel variables whose values can't be read, matched by name.

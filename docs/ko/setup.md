@@ -61,4 +61,4 @@ git add . && git commit -m "rekey: initial templates"
 - `init`은 `~/code` 아래 .env 파일들과 플랫폼을 읽어 템플릿을 만듭니다. 같은 값은 키 하나로 묶습니다.
 - 여러 프로젝트를 담은 폴더(예: `~/code/clients/a`, `~/code/clients/b`)가 있으면 `--group-dirs clients`를 붙이세요. 키 이름이 그 아래 폴더 이름으로 지어집니다.
 - 이미 있는 템플릿과 키 이름은 바꾸지 않으므로, `--source`를 나중에 추가해 다시 실행해도 안전합니다.
-- 만든 뒤에는 `git diff`로 훑어보세요. `# … 추정` 주석이 붙은 줄은 Vercel에서 값을 읽을 수 없어서 이름으로 짝지은 곳입니다.
+- 만든 뒤에는 `git diff`로 훑어보세요. `# …: guessed` 주석이 붙은 줄은 Vercel에서 값을 읽을 수 없어서 이름으로 짝지은 곳입니다.

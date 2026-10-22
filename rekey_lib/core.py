@@ -18,6 +18,7 @@ from . import tpl
 from .providers import MANUAL, Skip, Stop, Unavailable, from_browser, provider, works
 from .store import Record
 from .targets import BROKEN, DEPLOY, HEALTHY, kind
+from .i18n import _
 from .util import RekeyError, ask, bold, dim, fail, interactive, ok, open_url, say, step, warn
 
 Item = tpl.Item
@@ -54,7 +55,7 @@ class Ctx:
     def lookup(self, vault: str, name: str, field: str) -> str:
         rec = self.read(vault, name)
         if not rec or field not in rec.fields:
-            raise RekeyError(f"{name} 값이 {self.store.label} '{vault}'에 없습니다. vault 권한을 확인하세요 (처음 도입 중이면 rekey import {name})")
+            raise RekeyError(_("{name} is not in {store} '{vault}'. Check your vault access (adopting rekey? rekey import {name})", name=name, store=self.store.label, vault=vault))
         return rec.fields[field]
 
     # -- structure
@@ -86,7 +87,7 @@ class Ctx:
                     out.append(item)
                     break
         if not out:
-            raise RekeyError(f"{' '.join(selectors)}에 해당하는 키가 없습니다 (rekey ls)")
+            raise RekeyError(_("No keys match {sel} (rekey ls)", sel=" ".join(selectors)))
         return out
 
     def template(self, rel: str) -> tpl.Template:
@@ -94,7 +95,7 @@ class Ctx:
         for t in self.templates:
             if t.rel == rel:
                 return t
-        raise RekeyError(f"템플릿이 없습니다: targets/{rel}.tpl")
+        raise RekeyError(_("No such template: targets/{rel}.tpl", rel=rel))
 
 
 def mode(item: Item, ctx: Ctx | None = None) -> str:
@@ -175,7 +176,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
     actions = list(dict.fromkeys(actions))
     if not actions or ctx.dry_run:
         return []
-    step(f"재배포 {len(actions)}곳 — 끝날 때까지 확인합니다 (Ctrl-C: 그만 기다리기)")
+    step(_("Redeploying: {n} — waiting until done (Ctrl-C: stop waiting)", n=len(actions)))
     checks, failures = {}, []
     for a in actions:
         name = "/".join(a)
@@ -183,7 +184,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
             checks[name] = DEPLOY[a[0]](ctx, *a[1:])
         except RekeyError as e:
             fail(f"{name}: {e}")
-            failures.append(f"{name} 재배포 실패")
+            failures.append(_("{name}: redeploy failed", name=name))
     deadline, last = time.time() + wait, {}
     try:
         while checks and time.time() < deadline:
@@ -193,14 +194,14 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
                 except RekeyError:
                     state = "?"
                 if state in HEALTHY:
-                    ok(f"{name} 배포 정상")
+                    ok(_("{name}: deploy healthy", name=name))
                     del checks[name]
                 elif state == "NONE":
-                    say(dim(f"    {name}: 프로덕션 배포가 없어 건너뜀"))
+                    say(dim("    " + _("{name}: no production deployment, skipped", name=name)))
                     del checks[name]
                 elif state in BROKEN:
-                    fail(f"{name} 배포 실패 ({state}) — 로그를 확인하세요")
-                    failures.append(f"{name} 배포 실패")
+                    fail(_("{name}: deploy failed ({state}) — check the logs", name=name, state=state))
+                    failures.append(_("{name}: deploy failed", name=name))
                     del checks[name]
                 elif last.get(name) != state:
                     say(dim(f"    {name}: {state}"))
@@ -209,7 +210,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
                 time.sleep(10)
     except KeyboardInterrupt:
         say()
-    failures += [f"{name} 배포 확인 못함" for name in checks]
+    failures += [_("{name}: deploy not confirmed", name=name) for name in checks]
     return failures
 
 
@@ -225,7 +226,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
     for item in items:
         m = ctx.meta(item[1])
         if not force and (m.get("locked") or "check" in m.get("tags", [])):
-            skipped.append((item, m.get("locked") or m.get("note") or "교체 전 확인 필요"))
+            skipped.append((item, m.get("locked") or m.get("note") or _("check before rotating")))
         elif (rec := ctx.read(*item)) and rec.state.get("revoke") is not None:   # never again before the old one is revoked
             waiting.append(item)
         else:
@@ -236,33 +237,33 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
 
     say()
     if not todo:
-        say(bold("교체할 키가 없습니다."))
+        say(bold(_("Nothing to rotate.")))
         for item, why in skipped:
-            say(dim(f"  • {item[1]}: {why}  (그래도 하려면 --force)"))
+            say(dim(f"  • {item[1]}: {why}  (" + _("to do it anyway: --force") + ")"))
         if waiting:
-            say(dim("  • 이미 교체됨, 옛 키 폐기 대기: rekey revoke " + " ".join(i[1] for i in waiting)))
+            say(dim("  • " + _("already rotated, old key waiting to be revoked:") + " rekey revoke " + " ".join(i[1] for i in waiting)))
         return 0
     if ctx.dry_run:
-        say(dim("(dry-run: 아무것도 바꾸지 않고 보여 주기만 합니다)"))
-    say(bold(f"키 {len(todo)}개를 새로 발급해 모든 사용처를 바꿉니다."))
+        say(dim(_("(dry-run: showing what would happen, changing nothing)")))
+    say(bold(_("Keys to rotate: {n}. Each gets a new key, then every place that uses it is updated.", n=len(todo))))
     if len(todo) > len(browser):
-        say(f"  • 자동 {len(todo) - len(browser)}개 — 기다리기만 하면 됩니다")
+        say("  • " + _("Automatic: {n} — just wait", n=len(todo) - len(browser)))
     if browser:
-        say(f"  • 브라우저 {len(browser)}개 — 열린 페이지에서 키를 만들고 복사만: "
+        say("  • " + _("In the browser: {n} — make the key on the page that opens and copy it:", n=len(browser)) + " "
             + ", ".join(f"{p}×{n}" if n > 1 else p for p, n in Counter(provider(i[1]).label for i in browser).items()))
-    say(f"  • 바뀌는 곳 {len({t.rel for i in todo for t in ctx.users(i)})}곳")
+    say("  • " + _("Places that change: {n}", n=len({t.rel for i in todo for t in ctx.users(i)})))
     if waiting:
-        say(dim(f"  • 이미 교체됨 {len(waiting)}개 (옛 키 폐기 대기: rekey revoke " + " ".join(i[1] for i in waiting) + ")"))
+        say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
     for item, why in skipped:
-        say(dim(f"  • 건너뜀 {item[1]}: {why}"))
-    if not ctx.dry_run and ctx.interactive and interactive() and not ask("\n시작할까요?"):
+        say(dim("  • " + _("skipped {key}: {why}", key=item[1], why=why)))
+    if not ctx.dry_run and ctx.interactive and interactive() and not ask("\n" + _("Start?")):
         return 0
 
     done, later, problems, actions, stopped = [], [], [], [], False
     try:
         for n, item in enumerate(todo, 1):
             if item is (browser[0] if browser else None) and len(browser) < len(todo):
-                say(bold(f"\n이제 브라우저 단계 {len(browser)}개입니다."))
+                say(bold("\n" + _("Browser steps now: {n}.", n=len(browser))))
             step(f"[{n}/{len(todo)}] {item[1]}  {dim(provider(item[1]).label)}")
             try:
                 a, f = rotate_one(ctx, item, modes[item])
@@ -279,24 +280,24 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
                 problems.append(f"{item[1]}: {e}")
     except Stop:
         stopped = True
-        warn("여기서 멈춥니다. 끝난 키는 그대로입니다.")
+        warn(_("Stopping here. Finished keys stay as they are."))
         later += [i for i in todo if i not in done and i not in later]
     problems += deploy(ctx, actions)
 
     say()
-    step("결과")
-    ok(f"{'(dry-run) ' if ctx.dry_run else ''}교체 {len(done)}개")
+    step(_("Result"))
+    ok(("(dry-run) " if ctx.dry_run else "") + _("Rotated: {n}", n=len(done)))
     if later:
-        warn("남은 키: rekey rotate " + " ".join(i[1] for i in later))
+        warn(_("Left:") + " rekey rotate " + " ".join(i[1] for i in later))
     for p in problems:
         fail(p)
     if failed := [p.split(" → ", 1)[1].split(": ", 1)[0] for p in problems if " → " in p]:
-        say("  새 키는 저장됐습니다. 위 원인을 해결한 뒤 실패한 곳만 다시 반영하세요:")
+        say("  " + _("The new keys are saved. Fix the cause above, then write only the failed places again:"))
         say("  " + bold(resync_hint(failed)))
     if done and not ctx.dry_run:
-        if not problems and not stopped and ask(f"\n교체한 {len(done)}개는 모든 곳에 반영됐습니다. 옛 키를 지금 폐기할까요? (더 지켜보려면 N)", default=False):
+        if not problems and not stopped and ask("\n" + _("The rotated keys ({n}) are in place everywhere. Revoke the old keys now? (N to watch a little longer)", n=len(done)), default=False):
             return revoke(ctx, done)
-        say(dim("  확인 후 옛 키 폐기: rekey revoke " + " ".join(i[1] for i in done)))
+        say(dim("  " + _("When you are sure, revoke the old keys:") + " rekey revoke " + " ".join(i[1] for i in done)))
     return 1 if problems else 0
 
 
@@ -313,33 +314,33 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], li
         try:
             new, meta = prov.issue(ctx, item[1], old or {f: "" for f in need})
             if how != "browser":
-                ok("새 값 생성" if how == "self" else "새 키 발급")
+                ok(_("new value generated") if how == "self" else _("new key issued"))
         except RekeyError as e:      # no admin key, no permission, API down: the browser always works
-            say(dim(f"    자동으로 못 함 ({str(e).splitlines()[0][:100]}) → 브라우저로"))
+            say(dim("    " + _("can't do it automatically ({why}) → browser", why=str(e).splitlines()[0][:100])))
     by_hand = new is None
     if by_hand:
-        say(dim("    쓰는 곳: " + ", ".join(t.rel for t in users)))
+        say(dim("    " + _("used in:") + " " + ", ".join(t.rel for t in users)))
         new = from_browser(ctx, item[1], prov, old, need, m.get("note", ""), m.get("page", ""))
     while (good := works(prov, new)) is False:
-        warn("새 키가 동작하지 않습니다. 복사가 잘못됐거나 권한이 부족할 수 있습니다.")
+        warn(_("The new key doesn't work. It may be the wrong copy, or it lacks permissions."))
         if not by_hand:
-            if ask("    그래도 진행할까요?", default=False):
+            if ask("    " + _("Continue anyway?"), default=False):
                 break
-            raise RekeyError("새 키가 동작하지 않아 중단 (아무 곳도 바뀌지 않음)")
-        ans = input("    다시 복사하려면 Enter · 그대로 진행 y · 건너뛰기 s › ").strip().lower()
+            raise RekeyError(_("Stopped: the new key doesn't work (nothing was changed)"))
+        ans = input("    " + _("Enter: copy again · y: continue anyway · s: skip") + " › ").strip().lower()
         if ans == "y":
             break
         if ans == "s":
-            raise Skip("건너뜀")
+            raise Skip(_("skipped"))
         new = from_browser(ctx, item[1], prov, old, need, again=new)
     if missing := set(need) - set(new):
-        raise RekeyError(f"새 값에 {sorted(missing)}이(가) 없습니다")
+        raise RekeyError(_("The new value lacks {fields}", fields=sorted(missing)))
     if good:
-        ok("새 키로 API 호출 성공")
+        ok(_("the new key works"))
     new_rec = Record(new, previous=old, state={"meta": meta, "revoke": (rec.state.get("meta", {}) if rec else {}) if old else None})
     new_rec.stamp()
     ctx.write(*item, new_rec)
-    ok(f"{ctx.store.label}에 저장 (옛 값은 폐기 때까지 보관)")
+    ok(_("saved to {store} (the old value is kept until it is revoked)", store=ctx.store.label))
     return sync(ctx, users, item=item, values=new)
 
 
@@ -368,30 +369,30 @@ def still_used(ctx: Ctx, item: Item, old: dict[str, str]) -> list[str]:
 def revoke_one(ctx: Ctx, item: Item, rec: Record) -> str:
     """By API when possible; MANUAL + text when the person has to delete it."""
     if item[1].startswith(("self.", "supabase-db.")):
-        return "옛 값은 이미 쓰이지 않습니다"
+        return _("the old value is no longer used anywhere")
     prov = provider(item[1])
     if prov.revoke:
         try:
             return prov.revoke(ctx, item[1], rec.previous, rec.state.get("revoke") or {})
         except Unavailable:
             pass
-    return MANUAL + "옛 키를 삭제하세요."
+    return MANUAL + _("Delete the old key.")
 
 
 def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
     pending = [(i, r) for i in items if (r := ctx.read(*i)) and r.state.get("revoke") is not None]
     if not pending:
-        say(dim("폐기할 옛 키가 없습니다."))
+        say(dim(_("No old keys to revoke.")))
         return 0
     pending.sort(key=lambda p: (provider(p[0][1]).revoke is None, p[0][1]))
-    say(bold(f"옛 키 {len(pending)}개 폐기"))
+    say(bold(_("Old keys to revoke: {n}", n=len(pending))))
     left = []
     for n, (item, rec) in enumerate(pending, 1):
         prov = provider(item[1])
         step(f"[{n}/{len(pending)}] {item[1]}  {dim(prov.label)}")
         if (hits := still_used(ctx, item, rec.previous)) and not force:
-            fail("아직 옛 값을 쓰는 곳이 있어 멈춥니다: " + ", ".join(hits))
-            say("    새 값으로 바꾼 뒤 다시 폐기하세요: " + bold(resync_hint([h.split(" ")[0] for h in hits])))
+            fail(_("Stopping: the old value is still used in") + " " + ", ".join(hits))
+            say("    " + _("Write the new value there, then revoke again:") + " " + bold(resync_hint([h.split(" ")[0] for h in hits])))
             left.append(item[1])
             continue
         if ctx.dry_run:
@@ -401,13 +402,13 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
             msg = revoke_one(ctx, item, rec)
             if msg.startswith(MANUAL):
                 v = rec.previous.get("credential", "")
-                say(f"    {msg[len(MANUAL):]}" + (f"  {bold('끝자리 …' + v[-4:])}" if len(v) > 12 and "\n" not in v else "")
-                    + dim(f"  (rekey-{item[1]}-… 은 새 키이니 두세요)"))
+                say(f"    {msg[len(MANUAL):]}" + ("  " + bold(_("ends in …{tail}", tail=v[-4:])) if len(v) > 12 and "\n" not in v else "")
+                    + dim("  (" + _("keep rekey-{key}-…, that is the new one", key=item[1]) + ")"))
                 open_url(ctx.meta(item[1]).get("page") or prov.page)
-                if not ask("    지웠나요?"):
+                if not ask("    " + _("Deleted it?")):
                     left.append(item[1])
                     continue
-                msg = "삭제 확인"
+                msg = _("deletion confirmed")
             ok(msg)
         except RekeyError as e:
             fail(str(e))
@@ -416,7 +417,7 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
         rec.previous, rec.state["revoke"] = {}, None
         ctx.write(*item, rec)
     if left:
-        warn("남은 키: rekey revoke " + " ".join(left))
+        warn(_("Left:") + " rekey revoke " + " ".join(left))
     return 1 if left else 0
 
 
@@ -431,7 +432,7 @@ def import_(ctx: Ctx, items: list[Item]) -> int:
         if rec and rec.fields:
             continue
         if not set(ctx.fields(item)) <= set(found):
-            warn(f"{item[1]}: 현재 값을 찾지 못했습니다")
+            warn(_("{key}: current value not found", key=item[1]))
             missing += 1
             continue
         if not ctx.dry_run:
@@ -440,7 +441,8 @@ def import_(ctx: Ctx, items: list[Item]) -> int:
             ctx.write(*item, r)
         ok(item[1])
         saved += 1
-    say(f"{ctx.store.label}에 {saved}개 저장" + (f", {missing}개는 값을 찾지 못함" if missing else "") + (" (이미 있던 키는 그대로)" if saved < len(items) - missing else ""))
+    say(_("Saved to {store}: {n}", n=saved, store=ctx.store.label) + (", " + _("not found: {n}", n=missing) if missing else "")
+        + (" " + _("(keys already stored were left alone)") if saved < len(items) - missing else ""))
     return 1 if missing else 0
 
 
@@ -449,7 +451,7 @@ def diff(ctx: Ctx, templates: list[tpl.Template]) -> int:
     changed, differ = 0, []
     for t in templates:
         if not kind(t.kind).read:
-            say(dim(f"  {t.rel}: 값을 읽을 수 없는 종류"))
+            say(dim(f"  {t.rel}: " + _("values of this kind can't be read")))
             continue
         have = read_target(ctx, t, list(t.lines))
         for var, raw in t.lines.items():
@@ -459,14 +461,14 @@ def diff(ctx: Ctx, templates: list[tpl.Template]) -> int:
             except RekeyError as e:
                 warn(f"{t.rel} {var}: {e}")
                 continue
-            got = have.get(var, "<없음>")
+            got = have.get(var, "<" + _("missing") + ">")
             if got is None or got.strip() == want.strip():
                 continue
             changed += 1
             differ.append(t.rel)
             say(f"  ~ {t.rel} {var}" + ("" if secret else f": {got!r} → {want!r}"))
     if changed:
-        warn(f"차이 {changed}개. 템플릿대로 맞추려면: {resync_hint(differ)}")
+        warn(_("Differences: {n}. To match the templates:", n=changed) + " " + resync_hint(differ))
     else:
-        ok("차이 없음")
+        ok(_("no differences"))
     return 1 if changed else 0

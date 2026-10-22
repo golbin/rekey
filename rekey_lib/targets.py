@@ -18,6 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from .i18n import _
 from .util import RekeyError, api, private_file, run, succeeds
 
 Values = dict[str, str]
@@ -142,7 +143,7 @@ def vercel_token() -> str:
             with open(p) as f:
                 if tok := json.load(f).get("token"):
                     return tok
-    raise RekeyError("vercel login 필요")
+    raise RekeyError(_("vercel login needed"))
 
 
 def _vercel(ctx, method: str, path: str, body: Any = None, team: str | None = None) -> Any:
@@ -159,7 +160,7 @@ def vercel_project(ctx, name: str) -> tuple[str, str | None]:
                 return _vercel(ctx, "GET", f"/v9/projects/{name}", team=team)["id"], team
             except RekeyError:
                 continue
-        raise RekeyError(f"Vercel 프로젝트 '{name}'를 찾지 못했습니다")
+        raise RekeyError(_("Vercel project '{name}' not found", name=name))
     return ctx.cached(f"vercel:{name}", find)
 
 
@@ -218,7 +219,7 @@ def _railway_id(ctx, project: str) -> str:
         for p in json.loads(run([railway_bin(), "list", "--json"], timeout=60).stdout):
             if p.get("name") == project or p.get("id") == project:
                 return p["id"]
-        raise RekeyError(f"Railway 프로젝트 '{project}'를 찾지 못했습니다")
+        raise RekeyError(_("Railway project '{name}' not found", name=project))
     return ctx.cached(f"railway:{project}", find)
 
 
@@ -308,7 +309,7 @@ HEALTHY, BROKEN = {"READY", "SUCCESS"}, {"ERROR", "CANCELED", "FAILED", "CRASHED
 
 def kind(name: str) -> Kind:
     if name not in KINDS:
-        raise RekeyError(f"모르는 대상 종류: {name} (가능: {', '.join(KINDS)})")
+        raise RekeyError(_("unknown target kind: {name} (known: {kinds})", name=name, kinds=", ".join(KINDS)))
     return KINDS[name]
 
 

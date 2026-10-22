@@ -61,4 +61,4 @@ git add . && git commit -m "rekey: initial templates"
 - `init` lee los archivos .env bajo `~/code` y las plataformas, y escribe las plantillas. Los valores iguales se agrupan en una sola clave.
 - Si una carpeta contiene varios proyectos (por ejemplo `~/code/clients/a`, `~/code/clients/b`), añade `--group-dirs clients` para que las claves se nombren según las carpetas de dentro.
 - Nunca cambia plantillas ni nombres de claves existentes, así que puedes volver a ejecutarlo con más `--source` sin riesgo.
-- Revisa el resultado con `git diff`. Las líneas bajo un comentario `# … 추정` ("supuesto") son variables de Vercel cuyo valor no se puede leer y que se emparejaron por nombre.
+- Revisa el resultado con `git diff`. Las líneas bajo un comentario `# …: guessed` son variables de Vercel cuyo valor no se puede leer y que se emparejaron por nombre.

@@ -12,6 +12,18 @@ rekey sync targets/file/shop/web/.env.local.tpl
 - ローカルのテンプレートには**キーだけ**が入っています。ポートなどのローカル設定は自分で書くか、プロジェクトの `.env.example` を参照してください。
 - チームで共有したいローカル設定は、テンプレートに `KEY=値` の行を追加してください。次の `sync` から一緒に書き込まれます。
 
+## 既存の .env からテンプレートを作る
+
+```bash
+rekey init ~/code/shop/web/.env.local                   # ファイルひとつ
+rekey init ~/code/shop --with-settings                   # フォルダ内の .env すべて、通常の設定値も含める
+```
+
+- キーは `{{ op://… }}` の参照に置き換わります。すでにテンプレートにあるキーと同じ値なら、そのキーを使います。
+- テンプレートが既にあれば足りない変数だけを追加し、手で直した行はそのままです。
+- `--with-settings` がなければ、ローカルのテンプレートに通常の設定値（ポート、URL など）は入れません。
+- そのあと `rekey import` で新しい値を 1Password に保存します。
+
 ## キーを探す
 
 ```bash
@@ -109,4 +121,4 @@ page = "https://…"              # ブラウザ手順で開くページ
 
 **管理者キー**：同じ vault に `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（無効化用）があれば、そのサービスを自動で処理します。`rekey setup` が登録を手伝います。
 
-**環境変数**：`REKEY_HOME`（チームデータのフォルダ）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_NO_BROWSER=1`
+**環境変数**：`REKEY_HOME`（チームデータのフォルダ）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）

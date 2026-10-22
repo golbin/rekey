@@ -12,6 +12,18 @@ rekey sync targets/file/shop/web/.env.local.tpl
 - Local templates hold **keys only**. Write local settings (ports and the like) yourself, or copy them from the project's `.env.example`.
 - To share a local setting with the team, add a `KEY=value` line to the template. From the next `sync` on, it is written too.
 
+## Turn an existing .env into a template
+
+```bash
+rekey init ~/code/shop/web/.env.local                   # one file
+rekey init ~/code/shop --with-settings                   # every .env under a folder, plain settings included
+```
+
+- Keys become `{{ op://… }}` references. A value that is already a key in your templates reuses that key.
+- If the template exists, only the variables it lacks are added; lines you edited stay as they are.
+- Without `--with-settings`, plain settings (ports, URLs…) are left out of local templates.
+- Then `rekey import` stores the new values in 1Password.
+
 ## Find keys
 
 ```bash
@@ -109,4 +121,4 @@ page = "https://…"              # page to open in the browser step
 
 **Admin keys**: items `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` and `rekey.anthropic-admin` (for revoking) in the same vault make those services automatic. `rekey setup` helps you add them.
 
-**Environment**: `REKEY_HOME` (team data folder), `REKEY_ROOT` (base folder for `file/`, defaults to the parent of `REKEY_HOME`), `REKEY_STORE=file:<path>` (a file instead of 1Password, for testing), `REKEY_NO_BROWSER=1`
+**Environment**: `REKEY_HOME` (team data folder), `REKEY_ROOT` (base folder for `file/`, defaults to the parent of `REKEY_HOME`), `REKEY_STORE=file:<path>` (a file instead of 1Password, for testing), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

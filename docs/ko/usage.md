@@ -12,6 +12,18 @@ rekey sync targets/file/shop/web/.env.local.tpl
 - 로컬 템플릿에는 **키만** 들어 있습니다. 포트 같은 로컬 설정은 직접 적거나 프로젝트의 `.env.example`을 참고하세요.
 - 팀이 같이 쓸 로컬 설정이 있으면 템플릿에 `KEY=값` 한 줄을 추가하세요. 다음 `sync`부터 함께 만들어집니다.
 
+## 기존 .env에서 템플릿 만들기
+
+```bash
+rekey init ~/code/shop/web/.env.local                   # 파일 하나
+rekey init ~/code/shop --with-settings                   # 폴더 안의 .env 전부, 일반 설정값 포함
+```
+
+- 키는 `{{ op://… }}` 참조로 바뀝니다. 이미 템플릿에 있는 키와 값이 같으면 그 키를 그대로 씁니다.
+- 템플릿이 이미 있으면 없는 변수만 덧붙이고, 고쳐 둔 줄은 그대로 둡니다.
+- `--with-settings`가 없으면 로컬 템플릿에 일반 설정값(포트, URL 등)은 넣지 않습니다.
+- 그다음 `rekey import`로 새 값을 1Password에 저장합니다.
+
 ## 키 찾기
 
 ```bash
@@ -109,4 +121,4 @@ page = "https://…"              # 브라우저 단계에서 열 페이지
 
 **관리자 키**: 1Password의 키와 같은 vault에 `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
 
-**환경변수**: `REKEY_HOME`(팀 데이터 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`
+**환경변수**: `REKEY_HOME`(팀 데이터 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)

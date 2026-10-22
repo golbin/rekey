@@ -12,6 +12,18 @@ rekey sync targets/file/shop/web/.env.local.tpl
 - Las plantillas locales solo tienen **claves**. Escribe tú la configuración local (puertos y similares) o cópiala del `.env.example` del proyecto.
 - Para compartir una configuración local con el equipo, añade una línea `CLAVE=valor` a la plantilla. A partir del siguiente `sync` también se escribe.
 
+## Convertir un .env existente en plantilla
+
+```bash
+rekey init ~/code/shop/web/.env.local                   # un archivo
+rekey init ~/code/shop --with-settings                   # todos los .env de una carpeta, con la configuración normal
+```
+
+- Las claves se convierten en referencias `{{ op://… }}`. Si un valor ya es una clave de tus plantillas, se reutiliza esa clave.
+- Si la plantilla ya existe, solo se añaden las variables que faltan; las líneas que editaste no cambian.
+- Sin `--with-settings`, la configuración normal (puertos, URL…) no entra en las plantillas locales.
+- Después, `rekey import` guarda los valores nuevos en 1Password.
+
 ## Buscar claves
 
 ```bash
@@ -109,4 +121,4 @@ page = "https://…"                # página que se abre en el paso de navegado
 
 **Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en la misma bóveda, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
 
-**Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`
+**Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

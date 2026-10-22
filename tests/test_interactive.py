@@ -33,7 +33,7 @@ class Person(unittest.TestCase):
 
     def spawn(self, *args):
         env = dict(os.environ, REKEY_HOME=f"{self.root}/rekey", REKEY_ROOT=self.root, REKEY_STORE=f"file:{self.root}/store.json",
-                   REKEY_NO_BROWSER="1", NO_COLOR="1")
+                   REKEY_NO_BROWSER="1", NO_COLOR="1", REKEY_LANG="ko")
         pid, self.fd = pty.fork()
         if pid == 0:
             os.execve(REKEY, ["rekey", *args], env)
