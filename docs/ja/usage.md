@@ -48,6 +48,7 @@ rekey rotate openai.shop
    - 失効前に戻したいときは `rekey undo <キー>`。すべての場所を古いキーに戻し、新しいキーを削除します。
 4. 1Password に保存します。古い値は無効化するまで保管します。
 5. すべての使用先を更新します。Vercel production と Railway は再デプロイし、正常になるまで待ちます。
+   - デプロイのタイミングを自分で決めたいとき（通話中、blue/green など）は `--no-deploy` を付け、あとでいつものデプロイか `rekey deploy <テンプレート>` で。
    - Supabase Edge Function、Fly、Worker はすぐに反映されます。GitHub Actions は次の実行から反映されます。
    - **GCP Secret Manager を読むサービスは手動で再起動**しないと新しいキーを使いません。
 6. 古いキーをいま無効化するか尋ねます。もう少し様子を見るなら N にして、あとで無効化します。

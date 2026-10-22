@@ -48,6 +48,7 @@ rekey rotate openai.shop
    - 폐기 전에 되돌리고 싶다면 `rekey undo <키>`. 모든 곳을 옛 키로 되돌리고 새 키를 삭제합니다.
 4. 1Password에 저장합니다. 옛 값은 폐기할 때까지 보관합니다.
 5. 모든 사용처를 바꿉니다. Vercel production과 Railway는 재배포한 뒤 배포가 정상인지 확인합니다.
+   - 배포 시점을 직접 정하려면(진행 중인 통화, blue/green 등) `--no-deploy`를 붙이고, 나중에 평소 배포 방식이나 `rekey deploy <템플릿>`으로 배포하세요.
    - Supabase Edge Function, Fly, Worker는 바로 적용됩니다. GitHub Actions는 다음 실행부터 적용됩니다.
    - **GCP Secret Manager를 읽는 서비스는 직접 재시작**해야 새 키를 씁니다.
 6. "옛 키를 지금 폐기할까요?"라고 묻습니다. 더 지켜보려면 N을 누르고 나중에 폐기합니다.

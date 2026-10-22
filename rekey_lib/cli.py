@@ -77,6 +77,13 @@ def cmd_sync(args) -> int:
     return 1 if failures else 0
 
 
+def cmd_deploy(args) -> int:
+    ctx = ctx_for(args)
+    actions = [("railway", *t.address) if t.kind == "railway" else ("vercel", t.address[0])
+               for t in templates(ctx, args.templates) if t.kind == "railway" or t.rel.endswith("/production") and t.kind == "vercel"]
+    return 1 if core.deploy(ctx, actions) else 0
+
+
 def cmd_diff(args) -> int:
     ctx = ctx_for(args)
     return core.diff(ctx, templates(ctx, args.templates))
@@ -84,7 +91,7 @@ def cmd_diff(args) -> int:
 
 def cmd_rotate(args) -> int:
     ctx = ctx_for(args)
-    return core.rotate(ctx, ctx.select(args.select, args.only), force=args.force, redo=args.redo)
+    return core.rotate(ctx, ctx.select(args.select, args.only), force=args.force, redo=args.redo, redeploy=not args.no_deploy)
 
 
 def cmd_revoke(args) -> int:
@@ -141,13 +148,15 @@ def main(argv: list[str] | None = None) -> int:
     cmd("where", cmd_where, _("where a key is used"), (["select"], {"nargs": "+", "help": sel}))
     cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}),
-        (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
+        (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}),
+        (["--no-deploy"], {"action": "store_true", "help": _("don't redeploy; you deploy when it suits you")}))
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("undo", cmd_undo, _("before revoking: put the old key back everywhere and delete the new one"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
+    cmd("deploy", cmd_deploy, _("redeploy Railway services and Vercel production (nothing else changes)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}))
     cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))
     cmd("import", cmd_import, _("store the values in use today in 1Password (no rotation)"), (["select"], {"nargs": "*", "help": sel}), dry)
     cmd("setup", cmd_setup, _("check readiness and fix what is missing"), (["select"], {"nargs": "*", "help": sel}))

@@ -48,6 +48,7 @@ rekey rotate openai.shop
    - 吊销前想回退？`rekey undo <密钥>` 会把所有地方改回旧密钥并删除新密钥。
 4. 保存到 1Password。旧值会保留到吊销为止。
 5. 更新所有使用处。Vercel production 和 Railway 会重新部署，并等待部署正常。
+   - 想自己决定部署时机（进行中的通话、蓝绿部署等）：加 `--no-deploy`，之后用平常的部署方式或 `rekey deploy <模板>`。
    - Supabase Edge Function、Fly、Worker 立即生效。GitHub Actions 从下次运行开始生效。
    - **读取 GCP Secret Manager 的服务需要手动重启**才会使用新密钥。
 6. 询问是否现在吊销旧密钥。想再观察一下就选 N，之后再吊销：

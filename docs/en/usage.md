@@ -48,6 +48,7 @@ rekey rotate openai.shop
    - Changed your mind before revoking? `rekey undo <key>` puts the old key back everywhere and deletes the new one.
 4. It is saved in 1Password. The old value is kept until it is revoked.
 5. Every place is updated. Vercel production and Railway are redeployed, and rekey waits until the deploys are healthy.
+   - Deploy on your own schedule (live calls, blue/green): `--no-deploy`, then your usual deploy or `rekey deploy <template>`.
    - Supabase Edge Functions, Fly and Workers apply at once. GitHub Actions use it from the next run.
    - **Services that read GCP Secret Manager need a restart** to pick up the new key.
 6. rekey asks whether to revoke the old key now. Answer N to watch a little longer, then later:

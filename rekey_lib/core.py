@@ -243,7 +243,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
 # ================================================================ rotate
 
 
-def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False) -> int:
+def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False, redeploy: bool = True) -> int:
     from .setup import preflight
 
     if not ctx.dry_run and not preflight(ctx, items):
@@ -311,7 +311,12 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         stopped = True
         warn(_("Stopping here. Finished keys stay as they are."))
         later += [i for i in todo if i not in done and i not in later]
-    problems += deploy(ctx, actions)
+    if redeploy:
+        problems += deploy(ctx, actions)
+    elif actions and not ctx.dry_run:
+        rels = sorted({"/".join(a) + ("/production" if a[0] == "vercel" else "") for a in actions})
+        warn(_("Not redeployed yet. The new values are set but take effect on the next deploy:") + " " + ", ".join(rels))
+        say("    " + _("Your own deploy works, or:") + " " + bold("rekey deploy " + " ".join(rels)))
 
     say()
     step(_("Result"))
