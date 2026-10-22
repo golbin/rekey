@@ -154,8 +154,12 @@ def issue_db_password(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     open_url(f"https://supabase.com/dashboard/project/{ref}/database/settings")
     say("    " + _("On the page: Reset database password → ⌘V → Save (the new password is on your clipboard)"))
     warn(_("The old password stops working the moment you save. Press Enter right after saving and every place is updated at once."))
-    input("    " + _("Saved? Enter") + " › ")
+    ans = input("    " + _("Saved? Enter  ·  not resetting it: s (skip) / q (stop)") + " › ").strip().lower()
     set_clipboard("")
+    if ans == "s":
+        raise Skip(_("skipped"))
+    if ans == "q":
+        raise Stop(_("stopped"))
     return {"password": pw}, {}
 
 

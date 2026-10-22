@@ -370,6 +370,9 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto", apply_now: bool = True) 
     ctx.vault = item[0]
     prov, m = provider(item[1]), ctx.meta(item[1])
     need = ctx.fields(item)
+    if not apply_now and item[1].startswith("supabase-db."):
+        # The old password stops the moment the new one is saved, so it can't wait for `rekey apply`.
+        raise Skip(_("a database password can't be issued ahead: do it with rekey rotate {key} when you are ready", key=item[1]))
     if how == "self" and any(re.match(r"[A-Za-z]{2,10}_", v) for v in old.values()):
         # rk_…, sk_…: a service issued it, so a random value would be rejected wherever it is checked.
         raise Skip(_("the old value looks issued by a service ({prefix}…), not made up: rename the key after its service", prefix=next(iter(old.values())).split("_")[0] + "_"))

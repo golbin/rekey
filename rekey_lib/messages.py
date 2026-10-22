@@ -304,6 +304,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("step 1 of rotate: new keys into 1Password only, nothing else changes", "rotate 1단계: 새 키를 1Password에만 저장, 다른 건 바꾸지 않음", "rotate 第 1 步：新密钥只存入 1Password，不改其他", "rotate の手順 1：新しいキーを 1Password にだけ保存、ほかは変えない", "paso 1 de rotate: claves nuevas solo en 1Password, nada más cambia"),
     ("step 2 of rotate: put issued keys in place, then ask about each redeploy", "rotate 2단계: 발급한 키를 반영하고 재배포를 하나씩 묻기", "rotate 第 2 步：替换已签发的密钥，并逐个询问是否重新部署", "rotate の手順 2：発行したキーを反映し、再デプロイをひとつずつ尋ねる", "paso 2 de rotate: pone las claves emitidas y pregunta por cada redespliegue"),
     ("Issued, not in place yet:", "발급만 하고 아직 반영 안 함:", "已签发、尚未替换：", "発行済み・未反映：", "Emitidas, aún sin poner:"),
+    ("a database password can't be issued ahead: do it with rekey rotate {key} when you are ready", "DB 비밀번호는 미리 발급할 수 없습니다: 준비되면 rekey rotate {key}로 하세요", "数据库密码不能提前签发：准备好后用 rekey rotate {key}", "DB パスワードは先に発行できません。準備ができたら rekey rotate {key} で", "una contraseña de base de datos no se puede emitir por adelantado: hazlo con rekey rotate {key} cuando estés listo"),
     ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),
@@ -365,7 +366,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
      "保存的那一刻旧密码就会失效。保存后立即按 Enter，所有地方会马上更新。",
      "保存した瞬間に古いパスワードは使えなくなります。保存したらすぐ Enter を押せば、すべての場所をすぐに更新します。",
      "La contraseña anterior deja de funcionar al guardar. Pulsa Enter justo después y todos los lugares se actualizan al momento."),
-    ("Saved? Enter", "저장했으면 Enter", "保存了吗？按 Enter", "保存したら Enter", "¿Guardado? Enter"),
+    ("Saved? Enter  ·  not resetting it: s (skip) / q (stop)", "저장했나요? Enter  ·  리셋하지 않으려면 s(건너뛰기) / q(멈추기)", "已保存？按 Enter  ·  不重置：s（跳过）/ q（停止）", "保存しましたか？ Enter  ·  リセットしないなら s（スキップ）/ q（停止）", "¿Guardada? Enter  ·  si no la restableces: s (saltar) / q (parar)"),
 
     # ---------------------------------------------------------------- providers
     ("generated", "자체 생성", "本地生成", "ローカル生成", "generada"),
