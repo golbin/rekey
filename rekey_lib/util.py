@@ -14,7 +14,8 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Iterator
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Callable, Iterable, Iterator
 
 from .i18n import _
 
@@ -71,6 +72,12 @@ def new_secret(fmt: str = "hex") -> str:
 
 
 # ---------------------------------------------------------------- processes
+
+
+def pmap(fn: Callable, xs: Iterable) -> list:
+    """map() over network calls, eight at a time."""
+    with ThreadPoolExecutor(8) as pool:
+        return list(pool.map(fn, xs))
 
 
 def run(cmd: list[str], *, stdin: str | None = None, cwd: str | None = None,

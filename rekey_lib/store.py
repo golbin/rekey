@@ -59,8 +59,23 @@ class OnePassword:
 
     def read(self, vault: str, name: str) -> Record | None:
         item = self._get(vault, name)
-        if item is None:
-            return None
+        return None if item is None else self._record(item)
+
+    def read_all(self, vault: str) -> dict[str, Record]:
+        """Every item in the vault, in two op calls instead of one per item."""
+        listed = run(["op", "item", "list", "--vault", vault, "--format", "json"], timeout=60).stdout
+        if not json.loads(listed or "[]"):
+            return {}
+        out = run(["op", "item", "get", "-", "--reveal", "--format", "json"], stdin=listed, timeout=300).stdout
+        items, i, out = {}, 0, out.strip()
+        while i < len(out):                                   # op prints one JSON object after another
+            item, i = json.JSONDecoder().raw_decode(out, i)
+            items[item["title"]] = self._record(item)
+            i += len(out[i:]) - len(out[i:].lstrip())
+        return items
+
+    @staticmethod
+    def _record(item: dict) -> Record:
         rec = Record()
         for f in item.get("fields", []):
             section, label, value = (f.get("section") or {}).get("id"), f.get("label"), f.get("value")
@@ -122,6 +137,9 @@ class FileStore:
     def read(self, vault: str, name: str) -> Record | None:
         d = self._load().get(f"{vault}/{name}")
         return Record(**d) if d else None
+
+    def read_all(self, vault: str) -> dict[str, Record]:
+        return {k.split("/", 1)[1]: Record(**d) for k, d in self._load().items() if k.startswith(vault + "/")}
 
     def write(self, vault: str, name: str, rec: Record, tags: list[str]) -> None:
         data = self._load()

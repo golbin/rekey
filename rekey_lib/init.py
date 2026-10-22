@@ -17,7 +17,7 @@ from collections import Counter, defaultdict
 from urllib.parse import urlsplit
 
 from . import tpl
-from .targets import _vercel, parse_dotenv, railway_bin, read_vercel
+from .targets import _vercel, parse_dotenv, railway_bin, read_gcp, read_vercel
 from .i18n import _
 from .util import RekeyError, dim, fail, ok, run, say, step
 
@@ -90,13 +90,32 @@ class Index:
 
     def seed(self, ctx) -> None:
         """Keep the names of keys that existing templates already use."""
-        from .core import current
+        from .core import read_target
         from .store import FileStore
 
-        if ctx.items() and ctx.store.check():
+        items = set(ctx.items())
+        if items and ctx.store.check():
             ctx.store = FileStore("")        # 1Password not reachable: read current values from the targets instead
-        for item in ctx.items():
-            _rec, f = current(ctx, item)
+        found: dict = defaultdict(dict)
+        for vault in {v for v, _n in items}:
+            say(dim("  " + _("Reading the keys in '{vault}'…", vault=vault)))
+            for name, rec in ctx.store.read_all(vault).items():
+                found[(vault, name)].update(rec.fields)
+        # Keys missing from the store: read them back from where they are used, one read per target.
+        for t in sorted(ctx.templates, key=lambda t: t.kind != "file"):
+            if all(found.get(i) for i in t.items()):
+                continue
+            if t.kind != "file":
+                say(dim(f"  · {t.rel}"))
+            try:
+                values = read_target(ctx, t, list(t.lines))
+            except RekeyError:
+                continue
+            for var, raw in t.lines.items():
+                for (v, n, f), value in (tpl.reverse(raw, values.get(var) or "") or {}).items():
+                    found[(v, n)].setdefault(f, value)
+        for item in items:
+            f = found.get(item, {})
             if "access_key_id" in f and "secret_access_key" in f:
                 value = f["access_key_id"] + "\0" + f["secret_access_key"]
             elif f.get("credential_base64") and not f.get("credential"):
@@ -288,12 +307,8 @@ def from_railway(ix: Index) -> dict[str, dict[str, str]]:
 
 
 def from_gcp(ix: Index, project: str) -> dict[str, dict[str, str]]:
-    env = {}
-    for name in run(["gcloud", "secrets", "list", "--project", project, "--format", "value(name)"]).stdout.split():
-        r = run(["gcloud", "secrets", "versions", "access", "latest", "--secret", name, "--project", project], check=False)
-        if r.returncode == 0:
-            env[name] = r.stdout
-    lines = classify(ix, env, settings=False)
+    names = run(["gcloud", "secrets", "list", "--project", project, "--format", "value(name)"]).stdout.split()
+    lines = classify(ix, read_gcp(None, [project], names), settings=False)
     return {f"gcp/{project}": lines} if lines else {}
 
 

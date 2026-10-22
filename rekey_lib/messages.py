@@ -276,6 +276,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("Local .env files", "로컬 .env 파일", "本地 .env 文件", "ローカルの .env ファイル", "Archivos .env locales"),
     ("Files: {n}", "{n}개 파일", "{n} 个文件", "{n} 個のファイル", "Archivos: {n}"),
     ("Places: {n}", "{n}곳", "{n} 处", "{n} か所", "Lugares: {n}"),
+    ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),
     ("{path} is outside {root} (set REKEY_ROOT)", "{path}은(는) {root} 밖에 있습니다 (REKEY_ROOT 설정)", "{path} 不在 {root} 之下（请设置 REKEY_ROOT）", "{path} は {root} の外にあります（REKEY_ROOT を設定）", "{path} está fuera de {root} (configura REKEY_ROOT)"),

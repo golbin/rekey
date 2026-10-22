@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from .i18n import _
-from .util import RekeyError, api, private_file, run, succeeds
+from .util import RekeyError, api, pmap, private_file, run, succeeds
 
 Values = dict[str, str]
 
@@ -189,12 +189,10 @@ def read_vercel(ctx, address: list[str], names: list[str]) -> dict[str, str | No
     """The list endpoint returns ciphertext even with decrypt=true; one request per variable decrypts."""
     project, env = address
     pid, team = vercel_project(ctx, project)
-    out: dict[str, str | None] = {}
-    for e in vercel_envs(ctx, project):
-        if env in (e.get("target") or []) and not e.get("gitBranch") and (not names or e["key"] in names):
-            out[e["key"]] = None if e.get("type") == "sensitive" else \
-                _vercel(ctx, "GET", f"/v1/projects/{pid}/env/{e['id']}", team=team).get("value")
-    return out
+    rows = [e for e in vercel_envs(ctx, project)
+            if env in (e.get("target") or []) and not e.get("gitBranch") and (not names or e["key"] in names)]
+    return dict(zip([e["key"] for e in rows], pmap(lambda e: None if e.get("type") == "sensitive" else
+                    _vercel(ctx, "GET", f"/v1/projects/{pid}/env/{e['id']}", team=team).get("value"), rows)))
 
 
 def deploy_vercel(ctx, project: str) -> Callable[[], str]:
@@ -285,12 +283,9 @@ def write_gcp(ctx, address: list[str], values: Values) -> None:
 
 
 def read_gcp(ctx, address: list[str], names: list[str]) -> dict[str, str | None]:
-    out = {}
-    for var in names:
-        p = run(["gcloud", "secrets", "versions", "access", "latest", "--secret", var, "--project", address[0]], check=False, timeout=60)
-        if p.returncode == 0:
-            out[var] = p.stdout
-    return out
+    got = pmap(lambda var: run(["gcloud", "secrets", "versions", "access", "latest", "--secret", var,
+                                "--project", address[0]], check=False, timeout=60), names)
+    return {var: p.stdout for var, p in zip(names, got) if p.returncode == 0}
 
 
 KINDS: dict[str, Kind] = {
