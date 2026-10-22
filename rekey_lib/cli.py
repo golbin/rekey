@@ -134,7 +134,7 @@ def cmd_split(args) -> int:
 
 def cmd_arrange(args) -> int:
     from .arrange import arrange
-    return arrange(ctx_for(args), args.pattern)
+    return arrange(ctx_for(args), args.pattern, args.old_names)
 
 
 def cmd_init(args) -> int:
@@ -172,7 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("undo", cmd_undo, _("before revoking: put the old key back everywhere and delete the new one"), (["select"], {"nargs": "+", "help": sel}), only)
-    cmd("arrange", cmd_arrange, _("one vault per environment, keys named <service>.<project>"), (["pattern"], {"help": _("vault name with {env}: \"Acme - {env}\" → Acme - Prod / Dev / Local")}), dry)
+    cmd("arrange", cmd_arrange, _("one vault per environment, keys named <project>.<service>"), (["pattern"], {"help": _("vault name with {env}: \"Acme - {env}\" → Acme - Prod / Dev / Local")}), dry,
+        (["--old-names"], {"action": "store_true", "help": _("today's names are <service>.<project> (before rekey 0.3)")}))
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
         dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
     cmd("deploy", cmd_deploy, _("redeploy Railway services and Vercel production (nothing else changes)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}))

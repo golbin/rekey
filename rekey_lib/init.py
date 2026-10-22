@@ -328,7 +328,7 @@ def where(rel: str) -> str:
 
 
 def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
-    """provider.project[.variable], after the project that uses the key most."""
+    """project.provider[.variable], after the project that uses the key most."""
     uses = defaultdict(list)
     for rel, lines in found.items():
         for var, raw in lines.items():
@@ -342,7 +342,7 @@ def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
         top = Counter(p for p, _var in uses[old]).most_common()
         top = sorted(top, key=lambda pc: (-pc[1], pc[0]))[0][0]
         var = Counter(v for _proj, v in uses[old]).most_common(1)[0][0]
-        base = f"{prov}.{ix.label.get(old) or top}"
+        base = f"{top if prov == 'supabase-db' else ix.label.get(old) or top}.{prov}"
         if prov in ("self", "other"):
             base += "." + var
         base = re.sub(r"[^a-z0-9.\-]+", "-", base.lower()).strip("-")

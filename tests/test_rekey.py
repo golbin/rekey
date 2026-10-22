@@ -33,9 +33,9 @@ def write(path, text):
 
 class Templates(unittest.TestCase):
     def test_resolve_and_reverse(self):
-        raw = "postgresql://u:" + tpl.ref(V, "supabase-db.abc", "password") + "@host/db"
+        raw = "postgresql://u:" + tpl.ref(V, "web.supabase-db", "password") + "@host/db"
         self.assertEqual(tpl.resolve(raw, lambda v, n, f: "p@ss"), "postgresql://u:p@ss@host/db")
-        self.assertEqual(tpl.reverse(raw, "postgresql://u:secret@host/db"), {(V, "supabase-db.abc", "password"): "secret"})
+        self.assertEqual(tpl.reverse(raw, "postgresql://u:secret@host/db"), {(V, "web.supabase-db", "password"): "secret"})
         self.assertIsNone(tpl.reverse(raw, "mysql://x"))
         t = tpl.parse("# c\nA=1\nB=" + tpl.ref(V, "x.y") + "\n", "file/a/.env")
         self.assertEqual(t.items(), {(V, "x.y")})
@@ -81,19 +81,19 @@ class Flow(unittest.TestCase):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={"web": ["file/web/"]}, retire=[])
         ctx = self.ctx()
         names = [n for _, n in ctx.items()]
-        self.assertIn("openai.api", names)                       # one item for the key copied twice
-        self.assertEqual(len(ctx.users((V, "openai.api"))), 2)
-        self.assertIn("supabase-db.abcref", names)               # password inside a URL
-        self.assertIn("cloudflare.web", names)                # R2 pair
+        self.assertIn("api.openai", names)                       # one item for the key copied twice
+        self.assertEqual(len(ctx.users((V, "api.openai"))), 2)
+        self.assertIn("web.supabase-db", names)               # password inside a URL
+        self.assertIn("web.cloudflare", names)                # R2 pair
         self.assertNotIn("APP_URL", ctx.template("file/web/.env.local").lines)   # local settings stay local
-        self.assertIn("locked", ctx.meta("self.web.data-master-key"))
-        self.assertIn("web", ctx.meta("openai.api")["tags"])
+        self.assertIn("locked", ctx.meta("web.self.data-master-key"))
+        self.assertIn("web", ctx.meta("api.openai")["tags"])
         self.assertNotIn(OPENAI, read(f"{self.home}/targets/file/web/.env.local.tpl"))
 
         self.assertEqual(self.run_(core.import_, self.ctx(), self.ctx().select(["all"])), 0)
-        self.assertEqual(self.store.read(V, "supabase-db.abcref").fields, {"password": "oldpw"})
+        self.assertEqual(self.store.read(V, "web.supabase-db").fields, {"password": "oldpw"})
 
-        secret = [i for i in self.ctx().items() if i[1] == "self.api.auth-secret"][0]
+        secret = [i for i in self.ctx().items() if i[1] == "api.self.auth-secret"][0]
         self.assertEqual(self.run_(core.rotate, self.ctx(), [secret]), 0)
         web, api = parse_dotenv(read(f"{self.root}/web/.env.local")), parse_dotenv(read(f"{self.root}/api/.env"))
         self.assertNotEqual(web["AUTH_SECRET"], "old-auth-secret-1")
@@ -125,14 +125,14 @@ class Flow(unittest.TestCase):
         before = read(f"{self.root}/web/.env.local")
         self.run_(core.rotate, self.ctx(dry_run=True), self.ctx().select(["all"]))
         self.assertEqual(read(f"{self.root}/web/.env.local"), before)
-        self.assertEqual(self.run_(core.rotate, self.ctx(), self.ctx().select(["openai.*", "self.web.data-*"])), 0)
+        self.assertEqual(self.run_(core.rotate, self.ctx(), self.ctx().select(["*.openai", "web.self.data-*"])), 0)
         self.assertEqual(read(f"{self.root}/web/.env.local"), before)        # browser needed, locked skipped
-        self.assertIn("Left: rekey rotate openai.api", self.out.getvalue())
-        self.assertIn("skipped self.web.data-master-key", self.out.getvalue())
+        self.assertIn("Left: rekey rotate api.openai", self.out.getvalue())
+        self.assertIn("skipped web.self.data-master-key", self.out.getvalue())
 
     def test_revoke_refuses_while_old_value_is_used(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        secret = [i for i in self.ctx().items() if i[1] == "self.api.auth-secret"][0]
+        secret = [i for i in self.ctx().items() if i[1] == "api.self.auth-secret"][0]
         self.run_(core.rotate, self.ctx(), [secret])
         write(f"{self.root}/api/.env", "RUNNER_AUTH_SECRET=old-auth-secret-1\n")
         self.assertEqual(self.run_(core.revoke, self.ctx(), [secret]), 1)
@@ -140,7 +140,7 @@ class Flow(unittest.TestCase):
 
     def test_one_broken_target_does_not_stop_the_others(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        secret = (V, "self.api.auth-secret")
+        secret = (V, "api.self.auth-secret")
         os.chmod(f"{self.root}/api", 0o555)
         try:
             self.assertEqual(self.run_(core.rotate, self.ctx(), [secret]), 1)
@@ -151,7 +151,7 @@ class Flow(unittest.TestCase):
 
     def test_pending_key_is_not_rotated_again_even_with_force(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        secret = (V, "self.api.auth-secret")
+        secret = (V, "api.self.auth-secret")
         self.run_(core.rotate, self.ctx(), [secret])
         first = self.store.read(*secret)
         self.run_(core.rotate, self.ctx(), [secret], force=True)
@@ -175,14 +175,14 @@ class Flow(unittest.TestCase):
         self.run_(split, self.ctx(), shared)
         ctx = self.ctx()
         projects = {i[1]: len({t.rel.split("/")[1] for t in ctx.users(i)}) for i in ctx.items()}
-        self.assertEqual(projects["self.api.auth-secret"], 2)        # our services share their own tokens
-        self.assertTrue(all(n == 1 for k, n in projects.items() if not k.startswith("self.")))
+        self.assertEqual(projects["api.self.auth-secret"], 2)        # our services share their own tokens
+        self.assertTrue(all(n == 1 for k, n in projects.items() if not ".self." in k))
         self.assertEqual({i[1] for i in ctx.select(["project:api"])},
                          {i[1] for i in ctx.items() if any(t.rel.startswith("file/api/") for t in ctx.users(i))})
 
     def test_issue_then_apply(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        secret = (V, "self.api.auth-secret")
+        secret = (V, "api.self.auth-secret")
         before = open(f"{self.root}/api/.env").read()
         self.run_(core.rotate, self.ctx(), [secret], apply_now=False)
         self.assertEqual(open(f"{self.root}/api/.env").read(), before)          # issue: places untouched
@@ -194,13 +194,13 @@ class Flow(unittest.TestCase):
     def test_arrange_one_vault_per_environment(self):
         from rekey_lib.arrange import arrange
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        secret = (V, "self.api.auth-secret")
+        secret = (V, "api.self.auth-secret")
         self.run_(core.rotate, self.ctx(), [secret])                      # a record that has to move along
         self.run_(arrange, self.ctx(), "Test - {env}")
         ctx = self.ctx()
         self.assertEqual({v for v, _n in ctx.items()}, {"Test - Local"})       # only .env files here
-        self.assertIn(("Test - Local", "openai.api"), ctx.items())
-        moved = [n for v, n in ctx.items() if n.startswith("self.") and ctx.read(v, n)]
+        self.assertIn(("Test - Local", "api.openai"), ctx.items())
+        moved = [n for v, n in ctx.items() if ".self." in n and ctx.read(v, n)]
         self.assertTrue(moved)                                              # the 1Password record moved too
         self.run_(core.sync, ctx, ctx.templates)                           # and every reference still resolves
         names = [n for _v, n in ctx.items()]
@@ -212,7 +212,7 @@ class Flow(unittest.TestCase):
         self.run_(init, self.ctx(), vault=None, sources=[], tags={}, retire=[], paths=[f"{self.root}/api/.env"], settings=True)
         t = self.ctx().template("file/api/.env")
         self.assertEqual(t.lines["PORT"], "3000")                                   # --with-settings
-        self.assertIn("op://Test Vault/openai.api/credential", t.lines["OPENAI_API_KEY"])   # same value → same key
+        self.assertIn("op://Test Vault/api.openai/credential", t.lines["OPENAI_API_KEY"])   # same value → same key
         self.assertIn("STRIPE_API_KEY", t.lines)                                     # the new key was added
         self.assertFalse(os.path.exists(f"{self.home}/targets/file/web/.env.local.tpl.bak"))
 

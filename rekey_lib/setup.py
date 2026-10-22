@@ -7,7 +7,7 @@ import subprocess
 import sys
 from collections import Counter
 
-from .providers import Provider, Skip, admin_record, from_browser
+from .providers import Provider, Skip, admin_record, from_browser, service
 from .store import Record
 from .targets import KINDS, logged_in
 from .i18n import _
@@ -55,7 +55,7 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
             else:
                 good = False
 
-    needed = {t.kind for i in items for t in ctx.users(i)} | {PROVIDER_LOGIN.get(n.split(".")[0], "") for _vault, n in items}
+    needed = {t.kind for i in items for t in ctx.users(i)} | {PROVIDER_LOGIN.get(service(n), "") for _vault, n in items}
     for name in sorted(needed & set(KINDS)):
         if logged_in(name):
             ok(_("{name}: logged in", name=name))
@@ -78,7 +78,7 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
 
 def offer_admin_keys(ctx, items: list[tuple[str, str]]) -> None:
     vault = Counter(v for v, _name in items).most_common(1)[0][0]
-    for prov, n in Counter(name.split(".")[0] for _vault, name in items).items():
+    for prov, n in Counter(service(name) for _vault, name in items).items():
         if prov not in ADMIN or n < 2:
             continue
         name, page, prefix, how = ADMIN[prov]

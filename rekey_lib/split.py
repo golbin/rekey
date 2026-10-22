@@ -12,6 +12,7 @@ import re
 from collections import defaultdict
 
 from .i18n import _
+from .providers import service
 from .util import bold, dim, ok, say
 
 
@@ -31,7 +32,7 @@ def split(ctx, items: list[tuple[str, str]]) -> int:
     taken = {name for _vault, name in ctx.items()}
     blocks, made = [], 0
     for vault, name in items:
-        if name.split(".")[0] in KEEP or ctx.meta(name).get("locked"):
+        if service(name) in KEEP or ctx.meta(name).get("locked"):
             continue
         rec = ctx.read(vault, name)
         if rec and rec.state.get("revoke") is not None:
@@ -42,13 +43,13 @@ def split(ctx, items: list[tuple[str, str]]) -> int:
             groups[ctx.project(t.rel)].append(t)
         if len(groups) < 2:
             continue
-        prov, project, *purpose = name.split(".")
+        project, prov, *purpose = name.split(".")
         keep = max(sorted(groups), key=lambda p: (p == project, len(groups[p])))   # this project keeps the name
         say(bold(name) + dim(f"  {keep}"))
         for proj in sorted(groups):
             if proj == keep:
                 continue
-            base = ".".join([prov, re.sub(r"[^a-z0-9\-]+", "-", proj.lower()).strip("-"), *purpose])
+            base = ".".join([re.sub(r"[^a-z0-9\-]+", "-", proj.lower()).strip("-"), prov, *purpose])
             envs = {env_of(t.rel) for t in groups[proj]}
             new, n = base, 2
             if new in taken and len(envs) == 1 and (alt := f"{base}-{envs.pop()}") not in taken:

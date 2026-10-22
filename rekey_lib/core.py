@@ -16,7 +16,7 @@ from collections import Counter
 from typing import Any, Callable
 
 from . import tpl
-from .providers import MANUAL, Skip, Stop, Unavailable, admin_record, from_browser, key_name, provider, works
+from .providers import MANUAL, Skip, Stop, Unavailable, admin_record, from_browser, key_name, provider, service, works
 from .store import Record
 from .targets import BROKEN, DEPLOY, HEALTHY, kind
 from .i18n import _
@@ -94,7 +94,7 @@ class Ctx:
 
     def select(self, selectors: list[str], only: list[str] | None = None) -> list[Item]:
         """name or glob · tag:<tag> · in:<template glob> · project:<name> · all. Items tagged 'retire' only by name.
-        `only`: keep keys of these services (openai) or names (openai.*), e.g. to go one service at a time."""
+        `only`: narrow down; a bare word means that service or project (openai, shop)."""
         out = []
         for item in self.items():
             name, m = item[1], self.meta(item[1])
@@ -108,8 +108,9 @@ class Ctx:
                 if hit:
                     out.append(item)
                     break
-        if only:                                       # a bare service name means its keys: openai → openai.*
-            keep = set(self.select([g if ":" in g or any(c in g for c in ".*?[") else g + ".*" for g in only]))
+        if only:
+            bare = lambda g: [f"{g}.*", f"*.{g}", f"*.{g}.*"]      # shop.openai, shop.self.x: by project or service
+            keep = set(self.select([s for g in only for s in ([g] if ":" in g or any(c in g for c in ".*?[") else bare(g))]))
             out = [i for i in out if i in keep]
         if not self.templates:
             raise RekeyError(_("No templates in {home}. Run rekey inside your team data folder, or start one there with rekey init.", home=self.home))
@@ -127,7 +128,7 @@ class Ctx:
 
 def mode(item: Item, ctx: Ctx | None = None) -> str:
     """self · auto · admin (auto when the admin key exists) · browser. With ctx, 'admin' is resolved."""
-    p, prov = provider(item[1]), item[1].split(".")[0]
+    p, prov = provider(item[1]), service(item[1])
     if prov == "self":
         return "self"
     if not p.issue or prov == "supabase-db":
@@ -275,7 +276,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
             todo.append(item)
     modes = {i: mode(i, ctx) for i in todo}
     # A DB password has no overlap: the old one dies when the new one is saved. Do those last, right before the redeploy.
-    todo.sort(key=lambda i: (i[1].startswith("supabase-db."), modes[i] == "browser", i[1]))
+    todo.sort(key=lambda i: (service(i[1]) == "supabase-db", modes[i] == "browser", i[1]))
     browser = [i for i in todo if modes[i] == "browser"]
 
     say()
@@ -369,7 +370,7 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto", apply_now: bool = True) 
     ctx.vault = item[0]
     prov, m = provider(item[1]), ctx.meta(item[1])
     need = ctx.fields(item)
-    if not apply_now and item[1].startswith("supabase-db."):
+    if not apply_now and service(item[1]) == "supabase-db":
         # The old password stops the moment the new one is saved, so it can't wait for `rekey apply`.
         raise Skip(_("a database password can't be issued ahead: do it with rekey rotate {key} when you are ready", key=item[1]))
     if how == "self" and any(re.match(r"[A-Za-z]{2,10}_", v) for v in old.values()):
@@ -467,7 +468,7 @@ def still_used(ctx: Ctx, item: Item, old: dict[str, str]) -> list[str]:
 
 def revoke_one(ctx: Ctx, item: Item, rec: Record) -> str:
     """By API when possible; MANUAL + text when the person has to delete it."""
-    if item[1].startswith(("self.", "supabase-db.")):
+    if service(item[1]) in ("self", "supabase-db"):
         return _("the old value is no longer used anywhere")
     prov = provider(item[1])
     if prov.revoke:

@@ -151,9 +151,18 @@ def issue_self(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     return {f: new_secret() for f in (old or {"credential": ""})}, {}
 
 
+def supabase_ref(ctx, item: str) -> str:
+    """The Supabase project a DB password belongs to, from the DB user or host next to it in the templates."""
+    for t in ctx.users((ctx.vault, item)):
+        for raw in t.lines.values():
+            if m := re.search(r"postgres\.([a-z]{20})|db\.([a-z]{20})\.supabase\.co", raw):
+                return m[1] or m[2]
+    raise Unavailable(_("can't tell which Supabase project this database password belongs to"))
+
+
 def issue_db_password(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
     """Supabase DB password: rekey makes it, the person pastes it in the dashboard."""
-    ref = item.split(".", 1)[1]
+    ref = supabase_ref(ctx, item)
     if not (ctx.interactive and interactive()):
         raise Skip(_("this has to be saved in the Supabase dashboard"))
     pw = new_secret("password")
@@ -435,8 +444,21 @@ PROVIDERS: dict[str, Provider] = {
 }
 
 
+def service(name: str) -> str:
+    """Keys are named <project>.<service>[.<purpose>]: shop.openai, shop.self.cron-secret.
+    Names from before 0.3 put the service first (openai.shop); they still read right until
+    `rekey arrange --old-names` renames them."""
+    first, *rest = name.split(".")
+    if not rest or (first in KNOWN and rest[0] not in KNOWN):
+        return first
+    return rest[0]
+
+
+KNOWN = {*PROVIDERS, "self", "other", "supabase-db"}
+
+
 def provider(item: str) -> Provider:
-    return PROVIDERS.get(item.split(".", 1)[0]) or P(item.split(".", 1)[0])
+    return PROVIDERS.get(service(item)) or P(service(item))
 
 
 def works(prov: Provider, fields: Fields) -> bool | None:

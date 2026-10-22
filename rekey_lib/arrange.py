@@ -1,7 +1,7 @@
 """`rekey arrange "Acme - {env}"`: one vault per environment, and names that say what a key is.
 
 Each key moves to the vault of the environment that uses it (Prod, Dev, Local) and is named
-<service>.<project>: openai.shop in "Acme - Prod" is the production OpenAI key of shop. A key used by
+<project>.<service>: shop.openai in "Acme - Prod" is the production OpenAI key of shop. A key used by
 several environments is split, one per environment; the next `rekey rotate` gives each its own value.
 Kept whole (and put in the most protected vault that uses them): our own service-to-service tokens,
 database passwords, locked keys, and keys rotated but not yet revoked.
@@ -31,13 +31,21 @@ def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
 
-def plan(ctx, pattern: str) -> list[tuple[tuple[str, str], tuple[str, str], list, bool]]:
+def parse(name: str, old_names: bool) -> tuple[str, str, list[str]]:
+    """(project, service, purpose). old_names: the earlier <service>.<project>[.<purpose>] order."""
+    a, *rest = name.split(".")
+    if old_names:
+        return (rest[0] if rest else ""), a, rest[1:]
+    return (a, rest[0], rest[1:]) if rest else ("", a, [])
+
+
+def plan(ctx, pattern: str, old_names: bool = False) -> list[tuple[tuple[str, str], tuple[str, str], list, bool]]:
     """(old item, new item, templates, carries the 1Password record) for every key."""
     out, taken = [], set()
     for item in sorted(ctx.items(), key=lambda i: i[1]):
         vault, name = item
         users = ctx.users(item)
-        svc, *rest = name.split(".")
+        project, svc, purpose = parse(name, old_names)
         rec = ctx.read(vault, name)
         whole = svc in ("self", "supabase-db") or ctx.meta(name).get("locked") or (rec and rec.state.get("revoke") is not None)
         groups = defaultdict(list)
@@ -48,14 +56,13 @@ def plan(ctx, pattern: str) -> list[tuple[tuple[str, str], tuple[str, str], list
         top = min(groups, key=RANK.get)
         for env, ts in sorted(groups.items(), key=lambda g: RANK[g[0]]):
             new_vault = pattern.format(env=env)
-            projects = {ctx.project(t.rel) for t in ts}
+            projects = Counter(ctx.project(t.rel) for t in ts)
             var = Counter(v for t in ts for v in t.vars_using(item)).most_common(1)[0][0]
-            if svc == "supabase-db":
-                base = name
+            if len(projects) == 1 or svc == "supabase-db":     # a database: named after the project using it most
+                where = slug(projects.most_common(1)[0][0])
             else:
-                project = slug(projects.pop()) if len(projects) == 1 else rest[0] if rest else slug(var)
-                purpose = rest[1:] if svc in ("self", "other") and len(rest) > 1 else []
-                base = ".".join([svc, project, *purpose])
+                where = project or slug(var)
+            base = ".".join([where, svc, *(purpose if svc in ("self", "other") else [])])
             new = base
             if (new_vault, new) in taken:
                 new = f"{base}.{slug(var)}"
@@ -67,11 +74,11 @@ def plan(ctx, pattern: str) -> list[tuple[tuple[str, str], tuple[str, str], list
     return out
 
 
-def arrange(ctx, pattern: str) -> int:
+def arrange(ctx, pattern: str, old_names: bool = False) -> int:
     if "{env}" not in pattern:
         say(_("Put {{env}} in the vault name, e.g. \"Acme - {{env}}\""))
         return 1
-    moves = plan(ctx, pattern)
+    moves = plan(ctx, pattern, old_names)
     changed = [m for m in moves if m[0] != m[1]]
     for vault in sorted({nv for _o, (nv, _n), _t, _r in moves}):
         step(vault)
