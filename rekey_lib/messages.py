@@ -159,11 +159,6 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     # ---------------------------------------------------------------- rotate
     ("Nothing to rotate.", "교체할 키가 없습니다.", "没有需要轮换的密钥。", "ローテーションするキーはありません。", "No hay nada que rotar."),
     ("to do it anyway: --force", "그래도 하려면 --force", "仍要执行：--force", "それでも行うなら --force", "para hacerlo igualmente: --force"),
-    ("already rotated, old key waiting to be revoked:",
-     "이미 교체됨, 옛 키 폐기 대기:",
-     "已轮换，旧密钥等待吊销：",
-     "ローテーション済み、古いキーは無効化待ち：",
-     "ya rotadas, la clave anterior espera ser revocada:"),
     ("(dry-run: showing what would happen, changing nothing)",
      "(dry-run: 아무것도 바꾸지 않고 보여 주기만 합니다)",
      "（dry-run：只显示会发生什么，不做任何修改）",

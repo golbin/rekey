@@ -12,6 +12,7 @@ from . import core
 from .init import init
 from .providers import provider
 from .store import open_store
+from . import __version__
 from .i18n import _
 from .util import RekeyError, bold, dim, fail, say
 
@@ -99,6 +100,7 @@ def cmd_init(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="rekey", description=_("Reissue, rotate and revoke API keys in one go. See README.md"))
+    ap.add_argument("--version", action="version", version=f"rekey {__version__}")
     ap.add_argument("--no-input", action="store_true", help=_("skip steps that need a person and only say what is left"))
     sub = ap.add_subparsers(dest="cmd", required=True)
     sel = _("key name or glob, tag:<tag>, in:<template glob>, all")

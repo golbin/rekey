@@ -8,7 +8,7 @@ import unittest
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-os.environ["REKEY_LANG"] = "ko"       # the assertions below read Korean messages
+os.environ["REKEY_LANG"] = "en"       # the assertions below read English messages
 
 from rekey_lib import core, tpl  # noqa: E402
 from rekey_lib.init import init  # noqa: E402
@@ -127,8 +127,8 @@ class Flow(unittest.TestCase):
         self.assertEqual(read(f"{self.root}/web/.env.local"), before)
         self.assertEqual(self.run_(core.rotate, self.ctx(), self.ctx().select(["openai.*", "self.web.data-*"])), 0)
         self.assertEqual(read(f"{self.root}/web/.env.local"), before)        # browser needed, locked skipped
-        self.assertIn("남은 키: rekey rotate openai.api", self.out.getvalue())
-        self.assertIn("건너뜀 self.web.data-master-key", self.out.getvalue())
+        self.assertIn("Left: rekey rotate openai.api", self.out.getvalue())
+        self.assertIn("skipped self.web.data-master-key", self.out.getvalue())
 
     def test_revoke_refuses_while_old_value_is_used(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
@@ -156,7 +156,7 @@ class Flow(unittest.TestCase):
         first = self.store.read(*secret)
         self.run_(core.rotate, self.ctx(), [secret], force=True)
         self.assertEqual(self.store.read(*secret).previous, first.previous)      # the real old key stays on record
-        self.assertIn("옛 키 폐기 대기", self.out.getvalue())
+        self.assertIn("Already rotated: 1", self.out.getvalue())
 
 
     def test_init_one_file_adds_only_what_is_missing(self):

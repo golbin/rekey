@@ -241,7 +241,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
         for item, why in skipped:
             say(dim(f"  • {item[1]}: {why}  (" + _("to do it anyway: --force") + ")"))
         if waiting:
-            say(dim("  • " + _("already rotated, old key waiting to be revoked:") + " rekey revoke " + " ".join(i[1] for i in waiting)))
+            say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
         return 0
     if ctx.dry_run:
         say(dim(_("(dry-run: showing what would happen, changing nothing)")))

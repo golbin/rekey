@@ -33,7 +33,7 @@ class Person(unittest.TestCase):
 
     def spawn(self, *args):
         env = dict(os.environ, REKEY_HOME=f"{self.root}/rekey", REKEY_ROOT=self.root, REKEY_STORE=f"file:{self.root}/store.json",
-                   REKEY_NO_BROWSER="1", NO_COLOR="1", REKEY_LANG="ko")
+                   REKEY_NO_BROWSER="1", NO_COLOR="1", REKEY_LANG="en")
         pid, self.fd = pty.fork()
         if pid == 0:
             os.execve(REKEY, ["rekey", *args], env)
@@ -55,14 +55,14 @@ class Person(unittest.TestCase):
 
     def test_person(self):
         self.spawn("rotate", "all")
-        self.expect("시작할까요")
+        self.expect("Start")
         os.write(self.fd, b"\n")
-        self.expect("복사하면 바로")
+        self.expect("moves on at once")
         self.assertTrue(subprocess.run(["pbpaste"], capture_output=True, text=True).stdout.startswith("rekey-upstage.app-"))
         self.copy(OLD)
-        self.expect("옛 키입니다")
+        self.expect("That is the old key")
         self.copy(NEW)
-        self.expect("폐기할까요")
+        self.expect("Revoke the old keys now")
         os.write(self.fd, b"n\n")
         time.sleep(0.5)
         self.assertNotIn(NEW.encode(), self.out)
@@ -71,10 +71,10 @@ class Person(unittest.TestCase):
             self.assertEqual(f.read(), f"UPSTAGE_API_KEY={NEW}\n")
 
         self.spawn("revoke", "all")
-        self.expect("지웠나요")
+        self.expect("Deleted it")
         self.assertIn(b"\xe2\x80\xa6cdef", self.out)        # tells which old key: …cdef
         os.write(self.fd, b"\n")
-        self.expect("삭제 확인")
+        self.expect("deletion confirmed")
 
 
 if __name__ == "__main__":
