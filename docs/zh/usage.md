@@ -66,9 +66,21 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # 按名称
 rekey rotate tag:breach-2026           # 按 keys.toml 中的标签
 rekey rotate 'in:vercel/shop/*'        # 这些模板用到的全部密钥
+rekey rotate tag:breach-2026 --only openai   # 缩小范围：服务、项目（in:…）、标签
 ```
 
 自动的先处理，浏览器步骤放在最后，并按服务分组。
+
+### 每个项目一个密钥
+
+多个项目共用一个密钥时，泄露了也不知道来源，而且每个项目都要改。把它拆开：
+
+```bash
+rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop、cartesia.blog、…
+rekey rotate 'cartesia.*'     # 每个项目拿到自己的密钥
+```
+
+必须保持同一个值的密钥不会拆：自家服务之间的令牌、数据库密码、locked 密钥、每个账号只给一个密钥的服务。
 
 ## 修改配置
 

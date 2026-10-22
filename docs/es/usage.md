@@ -66,9 +66,21 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # por nombre
 rekey rotate tag:breach-2026           # por una etiqueta de keys.toml
 rekey rotate 'in:vercel/shop/*'        # todas las claves que usan estas plantillas
+rekey rotate tag:breach-2026 --only openai   # acotar: un servicio, un proyecto (in:…), una etiqueta
 ```
 
 Primero van las automáticas; los pasos de navegador van al final, agrupados por servicio.
+
+### Una clave por proyecto
+
+Si varios proyectos comparten una clave, una filtración no dice de dónde salió y hay que cambiar todos. Sepárala:
+
+```bash
+rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, …
+rekey rotate 'cartesia.*'     # cada proyecto recibe su propia clave
+```
+
+Las claves que deben tener un solo valor no se tocan: tokens entre tus propios servicios, contraseñas de base de datos, claves locked y servicios que dan una sola clave por cuenta.
 
 ## Cambiar la configuración
 

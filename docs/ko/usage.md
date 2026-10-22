@@ -66,9 +66,21 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # 이름 패턴
 rekey rotate tag:breach-2026           # keys.toml 태그
 rekey rotate 'in:vercel/shop/*'        # 이 템플릿들이 쓰는 키 전부
+rekey rotate tag:breach-2026 --only openai   # 좁히기: 서비스, 프로젝트(in:…), 태그
 ```
 
 자동으로 되는 키를 먼저 처리하고, 브라우저 단계는 마지막에 서비스별로 모아서 진행합니다.
+
+### 프로젝트마다 키 하나
+
+여러 프로젝트가 키 하나를 같이 쓰면, 유출됐을 때 어디서 샜는지 알 수 없고 모든 프로젝트를 바꿔야 합니다. 나누세요.
+
+```bash
+rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, …
+rekey rotate 'cartesia.*'     # 프로젝트마다 자기 키를 받습니다
+```
+
+값이 하나여야 하는 키는 그대로 둡니다: 우리 서비스끼리 쓰는 토큰, DB 비밀번호, locked 키, 계정당 키를 하나만 주는 서비스.
 
 ## 설정 바꾸기
 

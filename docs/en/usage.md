@@ -66,9 +66,21 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # by name
 rekey rotate tag:breach-2026           # by a tag in keys.toml
 rekey rotate 'in:vercel/shop/*'        # every key these templates use
+rekey rotate tag:breach-2026 --only openai   # narrow down: a service, a project (in:…), a tag
 ```
 
 Automatic keys go first; browser steps come last, grouped by service.
+
+### One key per project
+
+When many projects share one key, a leak doesn't tell you where it came from, and every project changes. Split it:
+
+```bash
+rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, …
+rekey rotate 'cartesia.*'     # each project gets its own key
+```
+
+Keys that must stay one value are left alone: your own service-to-service tokens, database passwords, locked keys, and services that give an account a single key.
 
 ## Change settings
 

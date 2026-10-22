@@ -66,9 +66,21 @@ rekey revoke openai.shop
 rekey rotate 'cartesia.*'              # 名前のパターン
 rekey rotate tag:breach-2026           # keys.toml のタグ
 rekey rotate 'in:vercel/shop/*'        # これらのテンプレートが使うキーすべて
+rekey rotate tag:breach-2026 --only openai   # 絞り込み：サービス、プロジェクト（in:…）、タグ
 ```
 
 自動のキーを先に処理し、ブラウザの手順は最後にサービスごとにまとめます。
+
+### プロジェクトごとにキーをひとつ
+
+複数のプロジェクトがひとつのキーを共有していると、漏れたときにどこからか分からず、全プロジェクトを変えることになります。分けましょう。
+
+```bash
+rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop、cartesia.blog、…
+rekey rotate 'cartesia.*'     # プロジェクトごとに自分のキーを受け取ります
+```
+
+値をひとつに保つ必要があるキーはそのままです：自社サービス間のトークン、DB パスワード、locked のキー、アカウントにキーをひとつしか出さないサービス。
 
 ## 設定を変える
 
