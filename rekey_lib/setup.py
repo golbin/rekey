@@ -21,7 +21,7 @@ ADMIN = {
     "openai": ("openai-admin", "https://platform.openai.com/settings/organization/admin-keys", "sk-admin-",
                "Create new admin key"),
     "cloudflare": ("cloudflare-admin", "https://dash.cloudflare.com/profile/api-tokens", "",
-                   "Create Token → Custom → permission 'User · API Tokens · Edit'"),
+                   "Create Token → template 'Create Additional Tokens'"),
     "resend": ("resend-admin", "https://resend.com/api-keys", "re_", "Create API Key → Full access"),
     "anthropic": ("anthropic-admin", "https://console.anthropic.com/settings/admin-keys", "sk-ant-admin",
                   "Create Admin Key (to revoke old keys automatically)"),
