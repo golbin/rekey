@@ -73,8 +73,7 @@ def templates(ctx: core.Ctx, names: list[str]):
 def cmd_sync(args) -> int:
     ctx = ctx_for(args)
     actions, failures = core.sync(ctx, templates(ctx, args.templates))
-    failures += core.deploy(ctx, actions) if args.deploy else []
-    return 1 if failures else 0
+    return 1 if failures or core.offer_deploy(ctx, actions)[0] else 0
 
 
 def cmd_deploy(args) -> int:
@@ -126,12 +125,6 @@ def cmd_setup(args) -> int:
     return 0 if preflight(ctx, ctx.select(args.select or ["all"])) else 1
 
 
-def cmd_split(args) -> int:
-    from .split import split
-    ctx = ctx_for(args)
-    return split(ctx, ctx.select(args.select, args.only))
-
-
 def cmd_arrange(args) -> int:
     from .arrange import arrange
     return arrange(ctx_for(args), args.pattern, args.old_names)
@@ -141,7 +134,7 @@ def cmd_init(args) -> int:
     ctx = ctx_for(args)
     split = lambda specs: {n: p.split(",") for n, _, p in (s.partition("=") for s in specs)}
     return init(ctx, vault=args.vault, sources=args.source, tags=split(args.tag), retire=args.retire.split(",") if args.retire else [],
-                group_dirs=[d for d in args.group_dirs.split(",") if d], paths=args.paths, settings=args.with_settings)
+                paths=args.paths, settings=args.with_settings)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -170,12 +163,10 @@ def main(argv: list[str] | None = None) -> int:
     cmd("apply", cmd_apply, _("step 2 of rotate: put issued keys in place, then ask about each redeploy"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), only, dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
-    cmd("split", cmd_split, _("one key per project: rename the shared ones in the templates"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("undo", cmd_undo, _("before revoking: put the old key back everywhere and delete the new one"), (["select"], {"nargs": "+", "help": sel}), only)
     cmd("arrange", cmd_arrange, _("one vault per environment, keys named <project>.<service>"), (["pattern"], {"help": _("vault name with {env}: \"Acme - {env}\" → Acme - Prod / Dev / Local")}), dry,
         (["--old-names"], {"action": "store_true", "help": _("today's names are <service>.<project> (before rekey 0.3)")}))
-    cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),
-        dry, (["--deploy"], {"action": "store_true", "help": _("redeploy after writing")}))
+    cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}), dry)
     cmd("deploy", cmd_deploy, _("redeploy Railway services and Vercel production (nothing else changes)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}))
     cmd("diff", cmd_diff, _("compare templates with what is live"), (["templates"], {"nargs": "+"}))
     cmd("import", cmd_import, _("store the values in use today in 1Password (no rotation)"), (["select"], {"nargs": "*", "help": sel}), dry)
@@ -186,14 +177,13 @@ def main(argv: list[str] | None = None) -> int:
         (["--with-settings"], {"action": "store_true", "help": _("also put plain settings of local .env files in the templates")}),
         (["--source"], {"action": "append", "default": [], "help": "vercel · supabase · railway · gcp:<project>"}),
         (["--tag"], {"action": "append", "default": [], "help": _("tag=template path prefix,...")}),
-        (["--retire"], {"default": "", "help": _("template path prefixes of places no longer used,...")}),
-        (["--group-dirs"], {"default": "", "help": _("folders that hold several projects,... (keys are named after the folders inside)")}))
+        (["--retire"], {"default": "", "help": _("template path prefixes of places no longer used,...")}))
     args = ap.parse_args(argv)
     try:
         return args.fn(args)
     except (RekeyError, OSError) as e:
         fail(str(e))
-        if args.cmd in ("rotate", "revoke", "sync", "import"):
+        if args.cmd in ("rotate", "issue", "apply", "revoke", "undo", "sync", "import"):
             say(dim(_("Fix the cause and run the same command again: it continues with what is left.")))
         return 2
     except KeyboardInterrupt:

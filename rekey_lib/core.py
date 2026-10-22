@@ -85,12 +85,7 @@ class Ctx:
         return self.keys.get(name, {})
 
     def project(self, rel: str) -> str:
-        """The project a template belongs to: the git repository of a file, a Railway service, a Vercel project…"""
-        kind_, *a = rel.split("/")
-        if kind_ == "file":
-            return next((a[k - 1] for k in range(len(a) - 1, 0, -1)
-                         if os.path.exists(os.path.join(self.root, *a[:k], ".git"))), a[0])
-        return a[2] if kind_ == "railway" and len(a) > 2 else a[1] if kind_ == "github" and len(a) > 1 else a[0]
+        return tpl.project(self.root, rel)
 
     def select(self, selectors: list[str], only: list[str] | None = None) -> list[Item]:
         """name or glob · tag:<tag> · in:<template glob> · project:<name> · all. Items tagged 'retire' only by name.
@@ -184,8 +179,8 @@ def sync(ctx: Ctx, templates: list[tpl.Template], *, item: Item | None = None,
         names = t.vars_using(item) if item else list(t.lines)
         try:
             resolved = {var: tpl.resolve(t.lines[var], lookup) for var in names}
-            ctx.secret_vars = {var for var in names if tpl.REF.search(t.lines[var])}
-            action = kind(t.kind).write(ctx, t.address, resolved)
+            secret = {var for var in names if tpl.REF.search(t.lines[var])}
+            action = kind(t.kind).write(ctx, t.address, resolved, secret)
             if action:
                 actions.append(action)
             ok(f"{t.rel}  {dim(', '.join(names))}")
@@ -279,16 +274,19 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
     todo.sort(key=lambda i: (service(i[1]) == "supabase-db", modes[i] == "browser", i[1]))
     browser = [i for i in todo if modes[i] == "browser"]
 
+    def report_waiting() -> None:
+        if waiting:
+            say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
+            if issued := [i[1] for i in waiting if ctx.read(*i).state.get("applied") is False]:
+                say(dim("    " + _("Issued, not in place yet:") + " rekey apply " + " ".join(issued)))
+            say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
+
     say()
     if not todo:
         say(bold(_("Nothing to rotate.")))
         for item, why in skipped:
             say(dim(f"  • {item[1]}: {why}  (" + _("to do it anyway: --force") + ")"))
-        if waiting:
-            say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
-        if issued := [i[1] for i in waiting if ctx.read(*i).state.get("applied") is False]:
-            say(dim("    " + _("Issued, not in place yet:") + " rekey apply " + " ".join(issued)))
-            say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
+        report_waiting()
         return 0
     if ctx.dry_run:
         say(dim(_("(dry-run: showing what would happen, changing nothing)")))
@@ -299,11 +297,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         say("  • " + _("In the browser: {n} — make the key on the page that opens and copy it:", n=len(browser)) + " "
             + ", ".join(f"{p}×{n}" if n > 1 else p for p, n in Counter(provider(i[1]).label for i in browser).items()))
     say("  • " + _("Places that change: {n}", n=len({t.rel for i in todo for t in ctx.users(i)})))
-    if waiting:
-        say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
-        if issued := [i[1] for i in waiting if ctx.read(*i).state.get("applied") is False]:
-            say(dim("    " + _("Issued, not in place yet:") + " rekey apply " + " ".join(issued)))
-        say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
+    report_waiting()
     for item, why in skipped:
         say(dim("  • " + _("skipped {key}: {why}", key=item[1], why=why)))
     if not apply_now:
@@ -334,7 +328,8 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         stopped = True
         warn(_("Stopping here. Finished keys stay as they are."))
         later += [i for i in todo if i not in done and i not in later]
-    problems += offer_deploy(ctx, actions)[0]
+    failures, everywhere = offer_deploy(ctx, actions)
+    problems += failures
 
     say()
     step(_("Result"))
@@ -356,9 +351,11 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         say("  " + _("The new keys are saved. Fix the cause above, then write only the failed places again:"))
         say("  " + bold(resync_hint(failed)))
     if done and not ctx.dry_run:
-        if not problems and not stopped and ask("\n" + _("The rotated keys ({n}) are in place everywhere. Revoke the old keys now? (N to watch a little longer)", n=len(done)), default=False):
+        # rekey checks the variables, not what a running service has loaded: revoke only once all are redeployed.
+        if everywhere and not problems and not stopped and ask("\n" + _("The rotated keys ({n}) are in place everywhere. Revoke the old keys now? (N to watch a little longer)", n=len(done)), default=False):
             return revoke(ctx, done)
-        say(dim("  " + _("When you are sure, revoke the old keys:") + " rekey revoke " + " ".join(i[1] for i in done)))
+        say(dim("  " + (_("When you are sure, revoke the old keys:") if everywhere else _("After the deploys, revoke the old keys:"))
+                + " rekey revoke " + " ".join(i[1] for i in done)))
     return 1 if problems else 0
 
 

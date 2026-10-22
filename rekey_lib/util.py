@@ -67,7 +67,7 @@ def bold(text: str) -> str:
 def new_secret(fmt: str = "hex") -> str:
     if fmt == "password":  # letters and digits only: survives URLs and shells unescaped
         abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-        return "".join(secrets.choice(abc) for _ in range(32))
+        return "".join(secrets.choice(abc) for _i in range(32))
     return secrets.token_hex(32)
 
 
@@ -163,7 +163,7 @@ def ask(question: str, default: bool = True) -> bool:
     if not interactive():
         return False
     ans = input(question + (" [Y/n] " if default else " [y/N] ")).strip().lower()
-    return default if not ans else ans in ("y", "yes", "ㅇ", "네", "응", "是", "好", "はい", "s", "si", "sí")
+    return default if not ans else ans in ("y", "yes", "ㅇ", "네", "응", "是", "好", "はい", "si", "sí")   # not "s": that is skip
 
 
 def open_url(url: str) -> None:

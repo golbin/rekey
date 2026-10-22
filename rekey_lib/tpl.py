@@ -4,8 +4,8 @@
 
     # comments are fine
     NEXT_PUBLIC_APP_URL=https://shop.example.com                  ← plain setting
-    OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
-    DATABASE_URL=postgresql://postgres.abc:{{ op://Acme - Prod/supabase-db.abc/password }}@host:5432/postgres
+    OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
+    DATABASE_URL=postgresql://postgres.abc:{{ op://Acme - Prod/shop.supabase-db/password }}@host:5432/postgres
 
 The path says where the values go (targets/vercel/shop/production.tpl → Vercel
 project "shop", production). Values are written as-is: no quotes in templates.
@@ -88,6 +88,22 @@ def reverse(raw: str, value: str) -> dict[tuple[str, str, str], str] | None:
     pattern += re.escape(raw[pos:])
     m = re.fullmatch(pattern, value.strip(), re.S)
     return {key: m.group(g) for key, g in seen.items()} if m else None
+
+
+def project(root: str, rel: str) -> str:
+    """The project a template belongs to: the git repository of a file, a Railway service, a Vercel project…"""
+    kind, *a = rel.split("/")
+    if kind == "file":
+        return next((a[k - 1] for k in range(len(a) - 1, 0, -1) if os.path.exists(os.path.join(root, *a[:k], ".git"))), a[0])
+    return a[2] if kind == "railway" and len(a) > 2 else a[1] if kind == "github" and len(a) > 1 else a[0]
+
+
+def env(rel: str) -> str:
+    """Prod, Dev or Local: local files are Local; production targets and secret stores are Prod."""
+    kind, *a = rel.split("/")
+    name = {"file": "local", "railway": a[1] if len(a) > 1 else "", "vercel": a[-1],
+            "github": a[2] if len(a) > 2 else "production"}.get(kind, "production").lower()
+    return "Local" if name == "local" else "Prod" if name in ("production", "prod") else "Dev"
 
 
 def ref(vault: str, item: str, field_name: str = "credential") -> str:

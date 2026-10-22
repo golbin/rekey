@@ -168,17 +168,15 @@ class Flow(unittest.TestCase):
 
 
     def test_one_key_per_project(self):
-        from rekey_lib.split import split
+        from rekey_lib.arrange import arrange
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
-        shared = [i for i in self.ctx().items() if len({t.rel.split("/")[1] for t in self.ctx().users(i)}) > 1]
-        self.assertTrue(shared)
-        self.run_(split, self.ctx(), shared)
+        self.run_(arrange, self.ctx(), "Test - {env}")
         ctx = self.ctx()
-        projects = {i[1]: len({t.rel.split("/")[1] for t in ctx.users(i)}) for i in ctx.items()}
-        self.assertEqual(projects["api.self.auth-secret"], 2)        # our services share their own tokens
-        self.assertTrue(all(n == 1 for k, n in projects.items() if not ".self." in k))
-        self.assertEqual({i[1] for i in ctx.select(["project:api"])},
-                         {i[1] for i in ctx.items() if any(t.rel.startswith("file/api/") for t in ctx.users(i))})
+        projects = {i[1]: {ctx.project(t.rel) for t in ctx.users(i)} for i in ctx.items()}
+        self.assertEqual(projects["api.self.auth-secret"], {"api", "web"})      # our services share their own tokens
+        self.assertEqual(projects["web.openai"], {"web"})                        # a copied key: one per project
+        self.assertEqual(projects["api.openai"], {"api"})
+        self.assertEqual(ctx.select(["project:api"]), [i for i in ctx.items() if "api" in projects[i[1]]])
 
     def test_issue_then_apply(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])

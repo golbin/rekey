@@ -77,7 +77,9 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
 
 
 def offer_admin_keys(ctx, items: list[tuple[str, str]]) -> None:
-    vault = Counter(v for v, _name in items).most_common(1)[0][0]
+    # Admin keys open every key of a service: keep them in the most protected vault (… - Prod if there is one).
+    vaults = Counter(v for v, _name in ctx.items())
+    vault = next((v for v in vaults if v.lower().endswith("prod")), None) or vaults.most_common(1)[0][0]
     for prov, n in Counter(service(name) for _vault, name in items).items():
         if prov not in ADMIN or n < 2:
             continue

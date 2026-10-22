@@ -1,10 +1,10 @@
-"""`rekey arrange "Acme - {env}"`: one vault per environment, and names that say what a key is.
+"""`rekey arrange "Acme - {env}"`: one vault per environment, one key per project, names that say what a key is.
 
 Each key moves to the vault of the environment that uses it (Prod, Dev, Local) and is named
-<project>.<service>: shop.openai in "Acme - Prod" is the production OpenAI key of shop. A key used by
-several environments is split, one per environment; the next `rekey rotate` gives each its own value.
-Kept whole (and put in the most protected vault that uses them): our own service-to-service tokens,
-database passwords, locked keys, and keys rotated but not yet revoked.
+<project>.<service>: shop.openai in "Acme - Prod" is the production OpenAI key of shop. A key shared by
+several projects or environments is split, one per project and environment; until the next
+`rekey rotate` the pieces hold the same value. Kept whole (in the most protected vault that uses them):
+our own service-to-service tokens, database passwords, locked keys, and keys rotated but not yet revoked.
 1Password items are moved and renamed, never deleted.
 """
 
@@ -15,16 +15,12 @@ import os
 import re
 from collections import Counter, defaultdict
 
+from . import tpl
 from .i18n import _
-from .split import env_of
-from .util import ask, bold, dim, interactive, ok, say, step
+from .util import ask, dim, interactive, ok, say, step
 
 RANK = {"Prod": 0, "Dev": 1, "Local": 2}
-
-
-def env_class(rel: str) -> str:
-    env = env_of(rel)
-    return "Local" if env == "local" else "Prod" if env == "prod" else "Dev"
+WHOLE = {"self", "supabase-db"}
 
 
 def slug(s: str) -> str:
@@ -45,32 +41,26 @@ def plan(ctx, pattern: str, old_names: bool = False) -> list[tuple[tuple[str, st
     for item in sorted(ctx.items(), key=lambda i: i[1]):
         vault, name = item
         users = ctx.users(item)
-        project, svc, purpose = parse(name, old_names)
+        _project, svc, purpose = parse(name, old_names)
         rec = ctx.read(vault, name)
-        whole = svc in ("self", "supabase-db") or ctx.meta(name).get("locked") or (rec and rec.state.get("revoke") is not None)
+        whole = svc in WHOLE or ctx.meta(name).get("locked") or (rec and rec.state.get("revoke") is not None)
         groups = defaultdict(list)
         for t in users:
-            groups["*" if whole else env_class(t.rel)].append(t)
-        if "*" in groups:
-            groups = {min((env_class(t.rel) for t in users), key=RANK.get): groups["*"]}
-        top = min(groups, key=RANK.get)
-        for env, ts in sorted(groups.items(), key=lambda g: RANK[g[0]]):
+            groups[None if whole else (tpl.env(t.rel), ctx.project(t.rel))].append(t)
+        if None in groups:
+            projects = Counter(ctx.project(t.rel) for t in users)
+            groups = {(min((tpl.env(t.rel) for t in users), key=RANK.get), projects.most_common(1)[0][0]): users}
+        first = min(groups, key=lambda g: (RANK[g[0]], g[1]))
+        for (env, where), ts in sorted(groups.items(), key=lambda g: (RANK[g[0][0]], g[0][1])):
             new_vault = pattern.format(env=env)
-            projects = Counter(ctx.project(t.rel) for t in ts)
             var = Counter(v for t in ts for v in t.vars_using(item)).most_common(1)[0][0]
-            if len(projects) == 1 or svc == "supabase-db":     # a database: named after the project using it most
-                where = slug(projects.most_common(1)[0][0])
-            else:
-                where = project or slug(var)
-            base = ".".join([where, svc, *(purpose if svc in ("self", "other") else [])])
-            new = base
-            if (new_vault, new) in taken:
-                new = f"{base}.{slug(var)}"
+            base = ".".join([slug(where), svc, *(purpose if svc in ("self", "other") else [])])
+            new = base if (new_vault, base) not in taken else f"{base}.{slug(var)}"
             n = 2
             while (new_vault, new) in taken:
                 new, n = f"{base}-{n}", n + 1
             taken.add((new_vault, new))
-            out.append((item, (new_vault, new), ts, bool(rec) and env == top))
+            out.append((item, (new_vault, new), ts, bool(rec) and (env, where) == first))
     return out
 
 

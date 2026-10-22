@@ -43,7 +43,7 @@ NAMES = [
     ("locked", r"MASTER_KEYS?$|ENCRYPTION_KEY$|_PAYLOAD_KEY$|_HASH_SECRET$|^SENSITIVE_KEY$"),
     ("self", r"^((BETTER_|NEXT)?AUTH|CRON|SESSION|JWT|COOKIE|REVALIDATE|ENCRYPTION)_SECRET$|^APP_SECRET$"),
     # Anything else that looks like a credential could belong to a third party: a person issues it in the browser.
-    # Rename an item to self.<project>.<purpose> when it is a token only your own services share.
+    # Rename an item to <project>.self.<purpose> when it is a token only your own services share.
     ("other", r"SECRET|PASSWORD|_TOKEN$|_API_KEY$|_CLIENT_KEY$|_OTP(_CODE)?$"),
 ]
 # The value's own prefix beats the name (QUALITY_LLM_API_KEY may hold an OpenAI key).
@@ -140,14 +140,6 @@ class Index:
 
     def ref(self, name: str, field: str = "credential") -> str:
         return tpl.ref(self.vault, name, field)
-
-
-GROUP_DIRS: set[str] = set()     # folders that hold several projects (--group-dirs), e.g. "clients"
-
-
-def project_of(rel: str) -> str:
-    parts = rel.split("/")
-    return parts[1] if parts[0] in GROUP_DIRS and len(parts) > 2 else parts[0]
 
 
 def classify(ix: Index, env: dict[str, str], *, settings: bool) -> dict[str, str]:
@@ -320,20 +312,13 @@ def from_gcp(ix: Index, project: str) -> dict[str, dict[str, str]]:
 # ================================================================ writing
 
 
-def where(rel: str) -> str:
-    kind, *addr = rel.split("/")
-    if kind == "file":
-        return project_of("/".join(addr))
-    return addr[2] if kind == "railway" else addr[1] if kind == "github" else addr[0]
-
-
-def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
+def final_names(ix: Index, found: dict[str, dict[str, str]], root: str) -> dict[str, str]:
     """project.provider[.variable], after the project that uses the key most."""
     uses = defaultdict(list)
     for rel, lines in found.items():
         for var, raw in lines.items():
             for _vault, name, _field in tpl.REF.findall(raw):
-                uses[name].append((where(rel), var))
+                uses[name].append((tpl.project(root, rel), var))
     names, taken = {}, set(ix.fixed)
     for old in sorted(uses, key=lambda n: -len(uses[n])):
         if old in ix.fixed:
@@ -356,10 +341,9 @@ def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
 
 
 def init(ctx, *, vault: str | None, sources: list[str], tags: dict[str, list[str]], retire: list[str],
-         group_dirs: list[str] = (), paths: list[str] = (), settings: bool = False) -> int:
+         paths: list[str] = (), settings: bool = False) -> int:
     """Without paths: every .env file under the root; existing templates are left alone.
     With paths: only those files and folders; existing templates get the variables they lack."""
-    GROUP_DIRS.update(group_dirs)
     vault = vault or next(iter(Counter(v for v, _name in ctx.items()).most_common(1)), (None,))[0]
     if not vault:
         raise RekeyError(_("Say which 1Password vault to use: --vault \"Acme - Prod\""))
@@ -386,7 +370,7 @@ def init(ctx, *, vault: str | None, sources: list[str], tags: dict[str, list[str
         except RekeyError as e:
             fail(f"{src}: {e}")
 
-    for old, new in final_names(ix, found).items():
+    for old, new in final_names(ix, found, ctx.root).items():
         ix.notes[new] = ix.notes.pop(old, set())
         for lines in found.values():
             for var, raw in lines.items():
@@ -421,7 +405,10 @@ def init(ctx, *, vault: str | None, sources: list[str], tags: dict[str, list[str
             for _vault, name, _field in tpl.REF.findall(raw):
                 users[name].add(rel)
     keys_path = os.path.join(ctx.home, "keys.toml")
-    have = open(keys_path).read() if os.path.exists(keys_path) else ""
+    have = ""
+    if os.path.exists(keys_path):
+        with open(keys_path) as f:
+            have = f.read()
     blocks = []
     for name in sorted(users):
         if f'["{name}"]' in have:

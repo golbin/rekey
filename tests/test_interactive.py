@@ -25,7 +25,7 @@ class Person(unittest.TestCase):
         with open(f"{self.root}/app.env", "w") as f:
             f.write(f"UPSTAGE_API_KEY={OLD}\n")
         with open(f"{self.root}/rekey/targets/file/app.env.tpl", "w") as f:
-            f.write("UPSTAGE_API_KEY={{ op://V/upstage.app/credential }}\n")
+            f.write("UPSTAGE_API_KEY={{ op://V/app.upstage/credential }}\n")
         self.saved = subprocess.run(["pbpaste"], capture_output=True, text=True).stdout
 
     def tearDown(self):
@@ -58,7 +58,7 @@ class Person(unittest.TestCase):
         self.expect("Start")
         os.write(self.fd, b"\n")
         self.expect("moves on at once")
-        self.assertTrue(subprocess.run(["pbpaste"], capture_output=True, text=True).stdout.startswith("rekey-upstage.app-"))
+        self.assertTrue(subprocess.run(["pbpaste"], capture_output=True, text=True).stdout.startswith("rekey_app_upstage_"))
         self.copy(OLD)
         self.expect("That is the old key")
         self.copy(NEW)

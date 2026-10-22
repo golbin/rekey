@@ -26,7 +26,7 @@ Values = dict[str, str]
 
 @dataclass
 class Kind:
-    write: Callable[[Any, list[str], Values], tuple | None]          # returns a deploy action or None
+    write: Callable[[Any, list[str], Values, set[str]], tuple | None]   # (ctx, address, values, secret vars) → deploy action or None
     read: Callable[[Any, list[str], list[str]], dict[str, str | None]] | None = None   # None value = exists, unreadable
     login: tuple[list[str], list[str]] | None = None                 # (check command, login command)
 
@@ -97,7 +97,7 @@ def _path(ctx, address: list[str]) -> str:
     return os.path.join(ctx.root, *address)
 
 
-def write_file(ctx, address: list[str], values: Values) -> None:
+def write_file(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     path = _path(ctx, address)
     lines: list[str] = []
     if os.path.exists(path):
@@ -169,7 +169,7 @@ def vercel_envs(ctx, project: str) -> list[dict]:
     return _vercel(ctx, "GET", f"/v9/projects/{pid}/env", team=team).get("envs", [])
 
 
-def write_vercel(ctx, address: list[str], values: Values) -> tuple | None:
+def write_vercel(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> tuple | None:
     project, env = address
     if ctx.dry_run:
         return ("vercel", project) if env == "production" else None
@@ -180,7 +180,7 @@ def write_vercel(ctx, address: list[str], values: Values) -> tuple | None:
         for e in hits:
             _vercel(ctx, "PATCH", f"/v9/projects/{pid}/env/{e['id']}", {"value": value}, team)
         if not hits:   # new keys can't be read back from the dashboard; plain settings stay readable
-            kind_ = "sensitive" if var in getattr(ctx, "secret_vars", ()) and env != "development" else "encrypted"
+            kind_ = "sensitive" if var in secret and env != "development" else "encrypted"
             _vercel(ctx, "POST", f"/v10/projects/{pid}/env", {"key": var, "value": value, "type": kind_, "target": [env]}, team)
     return ("vercel", project) if env == "production" else None
 
@@ -226,7 +226,32 @@ def _railway_args(ctx, address: list[str]) -> list[str]:
     return ["-p", _railway_id(ctx, project), "-e", env, "-s", service]
 
 
-def write_railway(ctx, address: list[str], values: Values) -> tuple | None:
+def _railway_references(ctx, address: list[str]) -> dict[str, str]:
+    """Variables that point at another service (${{ api.OPENAI_API_KEY }}). The CLI only shows resolved values,
+    so this asks Railway's API with the CLI's login. Empty when it can't tell."""
+    def find() -> dict[str, str]:
+        try:
+            with open(os.path.expanduser("~/.railway/config.json")) as f:
+                user = json.load(f).get("user") or {}
+            token = os.environ.get("RAILWAY_API_TOKEN") or user.get("accessToken") or user.get("token")
+            project, env, service = address
+            gql = lambda q, v: api("POST", "https://backboard.railway.com/graphql/v2", token, {"query": q, "variables": v})["data"]
+            p = gql("query($p:String!){project(id:$p){environments{edges{node{id name}}} services{edges{node{id name}}}}}",
+                    {"p": _railway_id(ctx, project)})["project"]
+            ids = lambda k, name: next(e["node"]["id"] for e in p[k]["edges"] if e["node"]["name"] == name)
+            raw = gql("query($p:String!,$e:String!,$s:String!){variables(projectId:$p,environmentId:$e,serviceId:$s,unrendered:true)}",
+                      {"p": _railway_id(ctx, project), "e": ids("environments", env), "s": ids("services", service)})["variables"]
+            return {k: v for k, v in raw.items() if "${{" in str(v)}
+        except (RekeyError, OSError, KeyError, TypeError, StopIteration, ValueError):
+            return {}
+    return ctx.cached("railway-refs:" + "/".join(address), find)
+
+
+def write_railway(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> tuple | None:
+    if refs := {var: ref for var, ref in _railway_references(ctx, address).items() if var in values}:
+        # Writing a value would silently cut the link to the other service.
+        raise RekeyError(_("{vars} follow another service in Railway ({ref}); rekey won't replace a reference. "
+                           "Remove the reference in Railway, or the line from the template.", vars=", ".join(refs), ref=next(iter(refs.values()))))
     if not ctx.dry_run:
         for var, value in values.items():
             run([railway_bin(), "variable", "set", var, "--stdin", "--skip-deploys", *_railway_args(ctx, address)], stdin=value, timeout=60)
@@ -251,32 +276,32 @@ def deploy_railway(ctx, *address: str) -> Callable[[], str]:
 # ================================================================ the rest (write only)
 
 
-def write_supabase(ctx, address: list[str], values: Values) -> None:
+def write_supabase(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     if not ctx.dry_run:
         with private_file("".join(f"{k}={json.dumps(v)}\n" for k, v in values.items()), ".env") as path:
             run(["supabase", "secrets", "set", "--project-ref", address[0], "--env-file", path], timeout=120)
 
 
-def write_fly(ctx, address: list[str], values: Values) -> None:
+def write_fly(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     if not ctx.dry_run:
         body = "".join(f'{k}="""{v}"""\n' if "\n" in v or '"' in v else f"{k}={v}\n" for k, v in values.items())
         run(["fly", "secrets", "import", "-a", address[0]], stdin=body)
 
 
-def write_worker(ctx, address: list[str], values: Values) -> None:
+def write_worker(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     if not ctx.dry_run:
         with private_file(json.dumps(values), ".json") as path:
             run(["npx", "--yes", "wrangler", "secret", "bulk", path, "--name", address[0]], timeout=180)
 
 
-def write_github(ctx, address: list[str], values: Values) -> None:
+def write_github(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     if not ctx.dry_run:
         env = ["-e", address[2]] if len(address) > 2 else []
         for var, value in values.items():
             run(["gh", "secret", "set", var, "-R", "/".join(address[:2]), *env], stdin=value, timeout=60)
 
 
-def write_gcp(ctx, address: list[str], values: Values) -> None:
+def write_gcp(ctx, address: list[str], values: Values, secret: set[str] = frozenset()) -> None:
     if not ctx.dry_run:
         for var, value in values.items():
             run(["gcloud", "secrets", "versions", "add", var, "--project", address[0], "--data-file=-"], stdin=value, timeout=60)

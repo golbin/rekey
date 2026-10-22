@@ -1,7 +1,7 @@
 """Providers: how a new key is obtained and how the old one is revoked.
 
-The provider of an item is the part of its name before the first dot:
-"openai.shop" → openai. Unknown providers fall back to the browser.
+Keys are named <project>.<service>[.<purpose>]; the service picks the provider:
+"shop.openai" → openai. Unknown services fall back to the browser.
 
     issue(ctx, item, old)  → (new fields, meta)   by API; raise Unavailable to fall back to the browser
     revoke(ctx, item, old, meta) → message        by API; return MANUAL + text when a person must do it
@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import datetime as dt
+import hashlib
 import json
 import os
 import re
@@ -301,7 +302,6 @@ def matches_hint(hint: str, value: str) -> bool:
     return bool(m and value.startswith(m.group(1)) and value.endswith(m.group(2)))
 
 
-
 def _openai_find(ctx, value: str) -> tuple[str, dict]:
     tok = admin_key(ctx, "openai-admin")
     for p in api("GET", "https://api.openai.com/v1/organization/projects?limit=100", tok)["data"]:
@@ -360,8 +360,6 @@ def _cf(ctx, method: str, path: str, body: Any = None) -> Any:
 
 
 def issue_cloudflare(ctx, item: str, old: Fields) -> tuple[Fields, dict]:
-    import hashlib
-
     t = _cf(ctx, "GET", f"/user/tokens/{_cf_token_id(old)}")
     new = _cf(ctx, "POST", "/user/tokens", {k: t[k] for k in ("policies", "condition") if t.get(k)} | {"name": f"{t['name']} ({stamp()})"})
     if "access_key_id" in old:
@@ -469,7 +467,10 @@ def works(prov: Provider, fields: Fields) -> bool | None:
     headers = dict(line.split(": ", 1) for line in prov.header.format(key=key).splitlines() if ": " in line)
     for wait in (0, 3, 5, 10, 15):              # a key just made can take a few seconds to start working
         time.sleep(wait)
-        status, _body = http("GET", prov.check.format(key=key), headers=headers)
+        try:
+            status, _body = http("GET", prov.check.format(key=key), headers=headers)
+        except RekeyError:
+            return None
         if status < 300 or status not in (401, 403):
             break
-    return status < 300
+    return True if status < 300 else False if status in (401, 403) else None     # 429, 5xx: can't tell
