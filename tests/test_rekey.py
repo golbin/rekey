@@ -170,6 +170,17 @@ class Flow(unittest.TestCase):
         self.assertFalse(os.path.exists(f"{self.home}/targets/file/web/.env.local.tpl.bak"))
 
 
+class Clipboard(unittest.TestCase):
+    def test_only_key_shaped_copies_move_on(self):
+        from rekey_lib.providers import looks_like_key
+        for v in ("482913", "12345678901234567890", "jin@example.com", "Sign in to continue", "short-token"):
+            self.assertFalse(looks_like_key(v), v)
+        for v in ("a3f9c2e1b7d84f6a9c0e", "pk_7Hq2xLm9Vw3Rt8Zy\n", "-----BEGIN PRIVATE KEY-----\nMIGT\n-----END PRIVATE KEY-----"):
+            self.assertTrue(looks_like_key(v), v)
+        self.assertFalse(looks_like_key("482913", "re_"))
+        self.assertTrue(looks_like_key("re_abc", "re_"))
+
+
 class Home(unittest.TestCase):
     def test_finds_the_team_data_folder_from_anywhere_inside(self):
         from rekey_lib.cli import find_home

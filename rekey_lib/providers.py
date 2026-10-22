@@ -95,11 +95,21 @@ def from_browser(ctx, item: str, prov: Provider, old: Fields, fields: list[str],
     return out
 
 
+# Without a provider pattern: one token of 16+ characters, not all digits, or a PEM block.
+# Rules out what people copy on the way: sign-in codes, emails, names, sentences.
+KEYLIKE = re.compile(r"(?!\d+$)\S{16,}|-----BEGIN [\s\S]+-----END [^\n]+-----")
+
+
+def looks_like_key(value: str, form: str = "") -> bool:
+    value = value.strip()
+    return bool(re.match(form, value) if form else KEYLIKE.fullmatch(value))
+
+
 def _await_copy(ignore: set[str], old: set[str], form: str, label: str) -> str:
     noted: set[str] = set()
     while True:
         value = clipboard()
-        if value and value not in ignore and (not form or re.match(form, value)):
+        if value and value not in ignore and looks_like_key(value, form):
             return value
         if value and value not in noted and value not in ignore - old:
             noted.add(value)
