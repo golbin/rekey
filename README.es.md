@@ -5,6 +5,7 @@
 Vuelve a emitir una clave de API con un solo comando, actualízala en todos los lugares donde se usa (.env, Vercel, Railway, Supabase, GCP, GitHub…) y revoca la anterior.
 
 ```bash
+pipx install git+https://github.com/golbin/rekey   # instalar
 rekey rotate 'openai.*'   # clave nueva → todos los lugares actualizados → despliegues verificados
 rekey revoke 'openai.*'   # clave anterior revocada
 ```

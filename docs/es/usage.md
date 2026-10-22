@@ -1,6 +1,6 @@
 # Uso
 
-Los comandos que cambian cosas (`rotate`, `revoke`, `sync`, `import`) solo muestran lo que harían si añades `--dry-run`.
+Ejecuta los comandos dentro de la carpeta de datos del equipo. Los comandos que cambian cosas (`rotate`, `revoke`, `sync`, `import`) solo muestran lo que harían si añades `--dry-run`.
 
 ## Crear un .env local
 
@@ -121,4 +121,4 @@ page = "https://…"                # página que se abre en el paso de navegado
 
 **Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en la misma bóveda, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
 
-**Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)
+**Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo; por defecto, la carpeta más cercana hacia arriba que tenga `targets/` o `keys.toml`), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

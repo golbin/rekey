@@ -1,6 +1,6 @@
 # 使い方
 
-変更を伴うコマンド（`rotate`、`revoke`、`sync`、`import`）は `--dry-run` を付けるとプレビューだけ行います。
+コマンドはチームデータのフォルダ内で実行します。変更を伴うコマンド（`rotate`、`revoke`、`sync`、`import`）は `--dry-run` を付けるとプレビューだけ行います。
 
 ## ローカルの .env を作る
 
@@ -121,4 +121,4 @@ page = "https://…"              # ブラウザ手順で開くページ
 
 **管理者キー**：同じ vault に `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（無効化用）があれば、そのサービスを自動で処理します。`rekey setup` が登録を手伝います。
 
-**環境変数**：`REKEY_HOME`（チームデータのフォルダ）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）
+**環境変数**：`REKEY_HOME`（チームデータのフォルダ。既定は現在の場所から上にたどって最初に `targets/` か `keys.toml` がある場所）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）

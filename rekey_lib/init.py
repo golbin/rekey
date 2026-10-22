@@ -96,7 +96,7 @@ class Index:
         if ctx.items() and ctx.store.check():
             ctx.store = FileStore("")        # 1Password not reachable: read current values from the targets instead
         for item in ctx.items():
-            _, f = current(ctx, item)
+            _rec, f = current(ctx, item)
             if "access_key_id" in f and "secret_access_key" in f:
                 value = f["access_key_id"] + "\0" + f["secret_access_key"]
             elif f.get("credential_base64") and not f.get("credential"):

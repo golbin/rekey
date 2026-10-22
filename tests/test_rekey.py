@@ -170,7 +170,39 @@ class Flow(unittest.TestCase):
         self.assertFalse(os.path.exists(f"{self.home}/targets/file/web/.env.local.tpl.bak"))
 
 
+class Home(unittest.TestCase):
+    def test_finds_the_team_data_folder_from_anywhere_inside(self):
+        from rekey_lib.cli import find_home
+        env = os.environ.pop("REKEY_HOME", None)
+        try:
+            data = tempfile.mkdtemp()
+            os.makedirs(f"{data}/targets/file/x")
+            self.assertEqual(find_home(f"{data}/targets/file/x"), data)
+            empty = tempfile.mkdtemp()
+            self.assertEqual(find_home(empty), empty)          # a new folder for `rekey init`
+            os.environ["REKEY_HOME"] = empty
+            self.assertEqual(find_home(f"{data}/targets"), empty)
+        finally:
+            os.environ.pop("REKEY_HOME", None)
+            if env:
+                os.environ["REKEY_HOME"] = env
+
+
 class Messages(unittest.TestCase):
+    def test_nothing_shadows_the_translator(self):
+        """A local variable named _ hides the _() function and breaks messages in that function."""
+        import ast
+        import glob
+        bad = []
+        for f in glob.glob(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rekey_lib", "*.py")):
+            for fn in ast.walk(ast.parse(open(f).read())):
+                if isinstance(fn, ast.FunctionDef):
+                    for n in ast.walk(fn):
+                        targets = n.targets if isinstance(n, ast.Assign) else [n.target] if isinstance(n, ast.For) else []
+                        if any(isinstance(x, ast.Name) and x.id == "_" for t in targets for x in ast.walk(t)):
+                            bad.append(f"{os.path.basename(f)}:{n.lineno} in {fn.name}()")
+        self.assertEqual(bad, [])
+
     def test_every_message_is_translated(self):
         import ast
         import glob

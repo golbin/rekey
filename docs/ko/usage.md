@@ -1,6 +1,6 @@
 # 사용법
 
-바꾸는 명령(`rotate`, `revoke`, `sync`, `import`)은 `--dry-run`을 붙이면 미리 보기만 합니다.
+명령은 팀 데이터 폴더 안에서 실행합니다. 바꾸는 명령(`rotate`, `revoke`, `sync`, `import`)은 `--dry-run`을 붙이면 미리 보기만 합니다.
 
 ## 로컬 .env 만들기
 
@@ -121,4 +121,4 @@ page = "https://…"              # 브라우저 단계에서 열 페이지
 
 **관리자 키**: 1Password의 키와 같은 vault에 `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
 
-**환경변수**: `REKEY_HOME`(팀 데이터 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)
+**환경변수**: `REKEY_HOME`(팀 데이터 폴더. 기본값은 현재 폴더에서 위로 올라가며 처음 만나는 `targets/`나 `keys.toml`이 있는 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)

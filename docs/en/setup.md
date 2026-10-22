@@ -4,19 +4,15 @@ rekey keeps the **tool** (this repo) apart from your **team data** (a private re
 
 ## Everyone (10 minutes)
 
-**1. Get the tool and your team data.** Put the team data in the **same folder as your projects**: `targets/file/…` paths are relative to it.
+**1. Install the tool and get your team data.** Put the team data in the **same folder as your projects**: `targets/file/…` paths are relative to it.
 
 ```bash
-git clone https://github.com/golbin/rekey.git ~/tools/rekey
+brew install pipx                                  # if you don't have it (Linux: https://pipx.pypa.io)
+pipx install git+https://github.com/golbin/rekey
 git clone <your team data repo> ~/code/keys
 ```
 
-Add to `~/.zshrc` (or `~/.bashrc`) and open a new terminal:
-
-```bash
-export REKEY_HOME=~/code/keys
-alias rekey=~/tools/rekey/rekey
-```
+Run `rekey` inside that folder (or any folder below it). It finds the team data by itself. Update the tool later with `pipx upgrade rekey`.
 
 **2. 1Password CLI.**
 
@@ -29,6 +25,7 @@ In the 1Password app: Settings → Developer → turn on **"Integrate with 1Pass
 **3. Check.**
 
 ```bash
+cd ~/code/keys
 rekey ls                       # a list of keys: rekey works
 op vault get "Acme - Prod"     # vault details: 1Password works
 ```

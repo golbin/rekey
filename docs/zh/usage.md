@@ -1,6 +1,6 @@
 # 使用方法
 
-会修改内容的命令（`rotate`、`revoke`、`sync`、`import`）加上 `--dry-run` 时只预览，不做修改。
+在团队数据文件夹内运行命令。会修改内容的命令（`rotate`、`revoke`、`sync`、`import`）加上 `--dry-run` 时只预览，不做修改。
 
 ## 生成本地 .env
 
@@ -121,4 +121,4 @@ page = "https://…"              # 浏览器步骤要打开的页面
 
 **管理员密钥**：在同一个 vault 中有 `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（用于吊销）条目时，这些服务会自动处理。`rekey setup` 会帮你添加。
 
-**环境变量**：`REKEY_HOME`（团队数据文件夹）、`REKEY_ROOT`（`file/` 的基准文件夹，默认是 `REKEY_HOME` 的上一级）、`REKEY_STORE=file:<路径>`（用文件代替 1Password，用于测试）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）
+**环境变量**：`REKEY_HOME`（团队数据文件夹；默认是从当前位置向上找到的第一个含有 `targets/` 或 `keys.toml` 的文件夹）、`REKEY_ROOT`（`file/` 的基准文件夹，默认是 `REKEY_HOME` 的上一级）、`REKEY_STORE=file:<路径>`（用文件代替 1Password，用于测试）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）

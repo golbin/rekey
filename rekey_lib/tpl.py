@@ -57,7 +57,7 @@ def parse(text: str, rel: str) -> Template:
 
 def load(targets_dir: str) -> list[Template]:
     out = []
-    for dp, _, fns in os.walk(targets_dir):
+    for dp, _dirs, fns in os.walk(targets_dir):
         for fn in sorted(fns):
             if fn.endswith(".tpl"):
                 path = os.path.join(dp, fn)

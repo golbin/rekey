@@ -4,3 +4,5 @@ __pycache__/
 /supabase/
 /targets/
 /keys.toml
+/build/
+*.egg-info/

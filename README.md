@@ -5,6 +5,7 @@
 Reissue an API key with one command, update it everywhere it is used (.env files, Vercel, Railway, Supabase, GCP, GitHub…), and revoke the old one.
 
 ```bash
+pipx install git+https://github.com/golbin/rekey   # install
 rekey rotate 'openai.*'   # new key → every place updated → redeploys checked
 rekey revoke 'openai.*'   # old key revoked
 ```

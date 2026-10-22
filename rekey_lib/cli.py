@@ -16,11 +16,24 @@ from . import __version__
 from .i18n import _
 from .util import RekeyError, bold, dim, fail, say
 
-HOME = os.environ.get("REKEY_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def find_home(start: str | None = None) -> str:
+    """The team data folder: REKEY_HOME, else the nearest folder up from here with targets/ or keys.toml,
+    else the current folder (where `rekey init` starts a new one)."""
+    if os.environ.get("REKEY_HOME"):
+        return os.path.expanduser(os.environ["REKEY_HOME"])
+    here = start or os.getcwd()
+    d = here
+    while True:
+        if os.path.isdir(os.path.join(d, "targets")) or os.path.isfile(os.path.join(d, "keys.toml")):
+            return d
+        parent = os.path.dirname(d)
+        if parent == d:
+            return here
+        d = parent
 
 
 def ctx_for(args) -> core.Ctx:
-    return core.Ctx(HOME, open_store(), dry_run=getattr(args, "dry_run", False), interactive=not args.no_input)
+    return core.Ctx(find_home(), open_store(), dry_run=getattr(args, "dry_run", False), interactive=not args.no_input)
 
 
 def cmd_ls(args) -> int:
@@ -136,7 +149,8 @@ def main(argv: list[str] | None = None) -> int:
         return args.fn(args)
     except (RekeyError, OSError) as e:
         fail(str(e))
-        say(dim(_("Fix the cause and run the same command again: it continues with what is left.")))
+        if args.cmd in ("rotate", "revoke", "sync", "import"):
+            say(dim(_("Fix the cause and run the same command again: it continues with what is left.")))
         return 2
     except KeyboardInterrupt:
         say("\n" + _("Stopped. Run the same command again to continue with what is left."))

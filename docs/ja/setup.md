@@ -4,19 +4,15 @@ rekey は**ツール**（このリポジトリ）と**チームデータ**（`ta
 
 ## 全員（10 分）
 
-**1. ツールとチームデータを取得する。** チームデータは各プロジェクトと**同じフォルダ**に置きます。`targets/file/…` のパスはここを基準にします。
+**1. ツールをインストールし、チームデータを取得する。** チームデータは各プロジェクトと**同じフォルダ**に置きます。`targets/file/…` のパスはここを基準にします。
 
 ```bash
-git clone https://github.com/golbin/rekey.git ~/tools/rekey
+brew install pipx                                  # なければ（Linux：https://pipx.pypa.io）
+pipx install git+https://github.com/golbin/rekey
 git clone <チームデータのリポジトリ> ~/code/keys
 ```
 
-`~/.zshrc`（または `~/.bashrc`）に追加して、新しいターミナルを開きます。
-
-```bash
-export REKEY_HOME=~/code/keys
-alias rekey=~/tools/rekey/rekey
-```
+`rekey` はそのフォルダ（またはその下のどこか）で実行すれば、チームデータを自動で見つけます。ツールの更新は `pipx upgrade rekey` です。
 
 **2. 1Password CLI。**
 
@@ -29,6 +25,7 @@ brew install 1password-cli        # Linux: https://developer.1password.com/docs/
 **3. 確認。**
 
 ```bash
+cd ~/code/keys
 rekey ls                       # キー一覧が出れば rekey は OK
 op vault get "Acme - Prod"     # vault の情報が出れば 1Password は OK
 ```

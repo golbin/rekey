@@ -388,6 +388,6 @@ def works(prov: Provider, fields: Fields) -> bool | None:
     if not prov.check or "credential" not in fields:
         return None
     key = fields["credential"]
-    name, _, value = prov.header.partition(": ")
+    name, _sep, value = prov.header.partition(": ")
     status, _body = http("GET", prov.check.format(key=key), headers={name: value.format(key=key)} if name else {})
     return status < 300

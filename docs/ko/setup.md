@@ -4,19 +4,15 @@ rekey는 **도구**(이 저장소)와 **팀 데이터**(`targets/`, `keys.toml`�
 
 ## 모두 (10분)
 
-**1. 도구와 팀 데이터 받기.** 팀 데이터는 프로젝트 폴더들과 **같은 폴더**에 둡니다. `targets/file/…` 경로가 이 위치를 기준으로 합니다.
+**1. 도구 설치와 팀 데이터 받기.** 팀 데이터는 프로젝트 폴더들과 **같은 폴더**에 둡니다. `targets/file/…` 경로가 이 위치를 기준으로 합니다.
 
 ```bash
-git clone https://github.com/golbin/rekey.git ~/tools/rekey
+brew install pipx                                  # 없으면 (Linux: https://pipx.pypa.io)
+pipx install git+https://github.com/golbin/rekey
 git clone <팀 데이터 저장소> ~/code/keys
 ```
 
-`~/.zshrc`(또는 `~/.bashrc`)에 추가하고 새 터미널을 엽니다.
-
-```bash
-export REKEY_HOME=~/code/keys
-alias rekey=~/tools/rekey/rekey
-```
+`rekey`는 그 폴더(또는 그 아래 어디서든) 실행하면 팀 데이터를 알아서 찾습니다. 도구 업데이트는 `pipx upgrade rekey`입니다.
 
 **2. 1Password CLI.**
 
@@ -29,6 +25,7 @@ brew install 1password-cli        # Linux: https://developer.1password.com/docs/
 **3. 확인.**
 
 ```bash
+cd ~/code/keys
 rekey ls                       # 키 목록이 나오면 rekey OK
 op vault get "Acme - Prod"     # vault 정보가 나오면 1Password OK
 ```

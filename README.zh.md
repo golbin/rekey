@@ -5,6 +5,7 @@
 一条命令重新签发 API 密钥，更新到所有用到它的地方（.env、Vercel、Railway、Supabase、GCP、GitHub…），并吊销旧密钥。
 
 ```bash
+pipx install git+https://github.com/golbin/rekey   # 安装
 rekey rotate 'openai.*'   # 签发新密钥 → 更新所有使用处 → 确认重新部署
 rekey revoke 'openai.*'   # 吊销旧密钥
 ```

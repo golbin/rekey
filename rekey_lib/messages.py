@@ -265,6 +265,11 @@ ROWS: list[tuple[str, str, str, str, str]] = [
      "{store} '{vault}' に {name} がありません。vault の権限を確認してください（導入中なら rekey import {name}）",
      "{name} no está en {store} '{vault}'. Revisa tu acceso a la bóveda (¿empezando con rekey? rekey import {name})"),
     ("No keys match {sel} (rekey ls)", "{sel}에 해당하는 키가 없습니다 (rekey ls)", "没有与 {sel} 匹配的密钥（rekey ls）", "{sel} に当てはまるキーはありません（rekey ls）", "Ninguna clave coincide con {sel} (rekey ls)"),
+    ("No templates in {home}. Run rekey inside your team data folder, or start one there with rekey init.",
+     "{home}에 템플릿이 없습니다. 팀 데이터 폴더 안에서 실행하거나, 거기서 rekey init으로 시작하세요.",
+     "{home} 中没有模板。请在团队数据文件夹中运行 rekey，或在那里用 rekey init 开始。",
+     "{home} にテンプレートがありません。チームデータのフォルダ内で実行するか、そこで rekey init から始めてください。",
+     "No hay plantillas en {home}. Ejecuta rekey dentro de la carpeta de datos del equipo, o empieza una allí con rekey init."),
     ("No such template: targets/{rel}.tpl", "템플릿이 없습니다: targets/{rel}.tpl", "没有这个模板：targets/{rel}.tpl", "テンプレートがありません：targets/{rel}.tpl", "No existe la plantilla: targets/{rel}.tpl"),
 
     # ---------------------------------------------------------------- init

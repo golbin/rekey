@@ -5,6 +5,7 @@
 API 키를 한 명령으로 재발급하고, 쓰이는 모든 곳(.env, Vercel, Railway, Supabase, GCP, GitHub…)에 반영하고, 옛 키를 폐기합니다.
 
 ```bash
+pipx install git+https://github.com/golbin/rekey   # 설치
 rekey rotate 'openai.*'   # 새 키 발급 → 모든 사용처 교체 → 재배포 확인
 rekey revoke 'openai.*'   # 옛 키 폐기
 ```

@@ -4,19 +4,15 @@ rekey 把**工具**（本仓库）和**团队数据**（存放 `targets/`、`key
 
 ## 所有人（10 分钟）
 
-**1. 获取工具和团队数据。** 团队数据放在和各项目**同一个文件夹**里，`targets/file/…` 路径以它为基准。
+**1. 安装工具并获取团队数据。** 团队数据放在和各项目**同一个文件夹**里，`targets/file/…` 路径以它为基准。
 
 ```bash
-git clone https://github.com/golbin/rekey.git ~/tools/rekey
+brew install pipx                                  # 如果还没有（Linux：https://pipx.pypa.io）
+pipx install git+https://github.com/golbin/rekey
 git clone <团队数据仓库> ~/code/keys
 ```
 
-添加到 `~/.zshrc`（或 `~/.bashrc`），然后打开新终端：
-
-```bash
-export REKEY_HOME=~/code/keys
-alias rekey=~/tools/rekey/rekey
-```
+在那个文件夹（或其下任意位置）运行 `rekey`，它会自动找到团队数据。之后用 `pipx upgrade rekey` 更新工具。
 
 **2. 1Password CLI。**
 
@@ -29,6 +25,7 @@ brew install 1password-cli        # Linux: https://developer.1password.com/docs/
 **3. 检查。**
 
 ```bash
+cd ~/code/keys
 rekey ls                       # 显示密钥列表：rekey 正常
 op vault get "Acme - Prod"     # 显示 vault 信息：1Password 正常
 ```

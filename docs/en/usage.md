@@ -1,6 +1,6 @@
 # Usage
 
-Commands that change things (`rotate`, `revoke`, `sync`, `import`) only show what they would do with `--dry-run`.
+Run commands inside your team data folder. Commands that change things (`rotate`, `revoke`, `sync`, `import`) only show what they would do with `--dry-run`.
 
 ## Build a local .env
 
@@ -121,4 +121,4 @@ page = "https://…"              # page to open in the browser step
 
 **Admin keys**: items `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` and `rekey.anthropic-admin` (for revoking) in the same vault make those services automatic. `rekey setup` helps you add them.
 
-**Environment**: `REKEY_HOME` (team data folder), `REKEY_ROOT` (base folder for `file/`, defaults to the parent of `REKEY_HOME`), `REKEY_STORE=file:<path>` (a file instead of 1Password, for testing), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)
+**Environment**: `REKEY_HOME` (team data folder; default: the nearest folder up from here with `targets/` or `keys.toml`), `REKEY_ROOT` (base folder for `file/`, defaults to the parent of `REKEY_HOME`), `REKEY_STORE=file:<path>` (a file instead of 1Password, for testing), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

@@ -5,6 +5,7 @@
 API キーをコマンドひとつで再発行し、使っているすべての場所（.env、Vercel、Railway、Supabase、GCP、GitHub…）に反映して、古いキーを無効化します。
 
 ```bash
+pipx install git+https://github.com/golbin/rekey   # インストール
 rekey rotate 'openai.*'   # 新しいキーを発行 → すべての使用先を更新 → 再デプロイを確認
 rekey revoke 'openai.*'   # 古いキーを無効化
 ```

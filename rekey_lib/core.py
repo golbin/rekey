@@ -78,7 +78,7 @@ class Ctx:
         for item in self.items():
             name, m = item[1], self.meta(item[1])
             for sel in selectors:
-                kind_, _, arg = sel.partition(":")
+                kind_, _sep, arg = sel.partition(":")
                 hit = (sel == "all" and "retire" not in m.get("tags", [])) \
                     or (kind_ == "tag" and arg in m.get("tags", [])) \
                     or (kind_ == "in" and any(fnmatch.fnmatch(t.rel, arg) for t in self.users(item))) \
@@ -86,6 +86,8 @@ class Ctx:
                 if hit:
                     out.append(item)
                     break
+        if not self.templates:
+            raise RekeyError(_("No templates in {home}. Run rekey inside your team data folder, or start one there with rekey init.", home=self.home))
         if not out:
             raise RekeyError(_("No keys match {sel} (rekey ls)", sel=" ".join(selectors)))
         return out

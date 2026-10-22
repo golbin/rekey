@@ -4,19 +4,15 @@ rekey separa la **herramienta** (este repositorio) de los **datos del equipo** (
 
 ## Todos (10 minutos)
 
-**1. Descarga la herramienta y los datos del equipo.** Pon los datos del equipo en la **misma carpeta que tus proyectos**: las rutas `targets/file/…` se toman desde ahí.
+**1. Instala la herramienta y descarga los datos del equipo.** Pon los datos del equipo en la **misma carpeta que tus proyectos**: las rutas `targets/file/…` se toman desde ahí.
 
 ```bash
-git clone https://github.com/golbin/rekey.git ~/tools/rekey
+brew install pipx                                  # si no lo tienes (Linux: https://pipx.pypa.io)
+pipx install git+https://github.com/golbin/rekey
 git clone <repositorio de datos del equipo> ~/code/keys
 ```
 
-Añade esto a `~/.zshrc` (o `~/.bashrc`) y abre una terminal nueva:
-
-```bash
-export REKEY_HOME=~/code/keys
-alias rekey=~/tools/rekey/rekey
-```
+Ejecuta `rekey` dentro de esa carpeta (o en cualquier carpeta por debajo): encuentra los datos del equipo por sí solo. Actualiza la herramienta con `pipx upgrade rekey`.
 
 **2. CLI de 1Password.**
 
@@ -29,6 +25,7 @@ En la app de 1Password: Ajustes → Desarrollador → activa **"Integrar con 1Pa
 **3. Comprueba.**
 
 ```bash
+cd ~/code/keys
 rekey ls                       # aparece la lista de claves: rekey funciona
 op vault get "Acme - Prod"     # aparecen los datos de la bóveda: 1Password funciona
 ```
