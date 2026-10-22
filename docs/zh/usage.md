@@ -44,6 +44,7 @@ rekey rotate openai.shop
    - **自动：** 通过 API 签发或本地生成。失败时（例如没有权限）会说明原因并转到浏览器。
    - **浏览器：** 页面打开后，在名称栏按 ⌘V（名称已复制到剪贴板）→ 创建 → **复制**新密钥。一复制就会继续。按 `s` 跳过，按 `q` 停止。
    - 复制了旧密钥或其他服务的密钥会提示你。新密钥不可用时可以重新复制。
+   - 中途停下？再次运行同一命令即可，已完成的密钥会跳过。新密钥填错了？`rekey rotate <密钥> --redo`。
 4. 保存到 1Password。旧值会保留到吊销为止。
 5. 更新所有使用处。Vercel production 和 Railway 会重新部署，并等待部署正常。
    - Supabase Edge Function、Fly、Worker 立即生效。GitHub Actions 从下次运行开始生效。

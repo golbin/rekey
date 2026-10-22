@@ -84,7 +84,7 @@ def cmd_diff(args) -> int:
 
 def cmd_rotate(args) -> int:
     ctx = ctx_for(args)
-    return core.rotate(ctx, ctx.select(args.select), force=args.force)
+    return core.rotate(ctx, ctx.select(args.select), force=args.force, redo=args.redo)
 
 
 def cmd_revoke(args) -> int:
@@ -128,7 +128,8 @@ def main(argv: list[str] | None = None) -> int:
     cmd("ls", cmd_ls, _("list keys"), (["select"], {"nargs": "*", "help": sel}))
     cmd("where", cmd_where, _("where a key is used"), (["select"], {"nargs": "+", "help": sel}))
     cmd("rotate", cmd_rotate, _("new key → 1Password → every place → redeploy"), (["select"], {"nargs": "+", "help": sel}), dry,
-        (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}))
+        (["--force"], {"action": "store_true", "help": _("include locked keys and keys tagged check")}),
+        (["--redo"], {"action": "store_true", "help": _("make the new key again; the original old key stays the one to revoke")}))
     cmd("revoke", cmd_revoke, _("revoke old keys"), (["select"], {"nargs": "+", "help": sel}), dry,
         (["--force"], {"action": "store_true", "help": _("even if the old value is still in use")}))
     cmd("sync", cmd_sync, _("write templates to their targets (settings, a new machine's .env)"), (["templates"], {"nargs": "+", "help": _("template paths, or all")}),

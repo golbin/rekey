@@ -44,6 +44,7 @@ rekey rotate openai.shop
    - **Automatic:** issued by API or generated locally. If that fails (for example, no permission), rekey shows why and switches to the browser.
    - **Browser:** a page opens. Paste the name into the name field with ⌘V (it is already on your clipboard), create the key, and **copy** it. rekey moves on the moment you copy. Press `s` to skip or `q` to stop.
    - Copying the old key, or a key of another service, is caught. If the new key doesn't work, you can copy again.
+   - Stopped halfway? Run the same command again: keys already done are skipped. A new key went in wrong? `rekey rotate <key> --redo`.
 4. It is saved in 1Password. The old value is kept until it is revoked.
 5. Every place is updated. Vercel production and Railway are redeployed, and rekey waits until the deploys are healthy.
    - Supabase Edge Functions, Fly and Workers apply at once. GitHub Actions use it from the next run.

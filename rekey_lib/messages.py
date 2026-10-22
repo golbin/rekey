@@ -278,6 +278,8 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("Places: {n}", "{n}곳", "{n} 处", "{n} か所", "Lugares: {n}"),
     ("vault '{vault}'", "볼트 '{vault}'", "保险库 '{vault}'", "保管庫 '{vault}'", "bóveda '{vault}'"),
     ("Give it the same permissions as the old key", "권한은 옛 키와 같게 주세요", "权限与旧密钥保持一致", "権限は古いキーと同じにしてください", "Dale los mismos permisos que la clave anterior"),
+    ("A new key came out wrong? Make it again: rekey rotate <key> --redo", "새 키가 잘못 들어갔나요? 다시 만들기: rekey rotate <키> --redo", "新密钥有误？重新生成：rekey rotate <密钥> --redo", "新しいキーが間違っていたら作り直し：rekey rotate <キー> --redo", "¿La clave nueva salió mal? Vuelve a crearla: rekey rotate <clave> --redo"),
+    ("make the new key again; the original old key stays the one to revoke", "새 키를 다시 만듭니다. 폐기할 옛 키는 처음 것 그대로 유지됩니다", "重新生成新密钥；待吊销的仍是最初的旧密钥", "新しいキーを作り直します。失効させるのは最初の古いキーのままです", "vuelve a crear la clave nueva; la que se revoca sigue siendo la original"),
     ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),

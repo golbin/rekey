@@ -44,6 +44,7 @@ rekey rotate openai.shop
    - **Automática:** se emite por API o se genera en local. Si falla (por ejemplo, por falta de permisos), rekey explica el motivo y pasa al navegador.
    - **Navegador:** se abre una página. Pega el nombre en el campo de nombre con ⌘V (ya está en tu portapapeles), crea la clave y **cópiala**. rekey sigue en cuanto copias. Pulsa `s` para saltarla o `q` para parar.
    - Si copias la clave anterior o una clave de otro servicio, te avisa. Si la clave nueva no funciona, puedes copiarla otra vez.
+   - ¿Te detuviste a medias? Ejecuta el mismo comando otra vez: las claves ya hechas se saltan. ¿La clave nueva quedó mal? `rekey rotate <clave> --redo`.
 4. Se guarda en 1Password. El valor anterior se conserva hasta revocarlo.
 5. Se actualizan todos los lugares. Vercel production y Railway se vuelven a desplegar, y rekey espera a que los despliegues estén sanos.
    - Supabase Edge Functions, Fly y Workers lo aplican al instante. GitHub Actions lo usa desde la siguiente ejecución.

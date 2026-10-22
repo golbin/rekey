@@ -157,6 +157,10 @@ class Flow(unittest.TestCase):
         self.run_(core.rotate, self.ctx(), [secret], force=True)
         self.assertEqual(self.store.read(*secret).previous, first.previous)      # the real old key stays on record
         self.assertIn("Already rotated: 1", self.out.getvalue())
+        self.run_(core.rotate, self.ctx(), [secret], redo=True)              # the new one was wrong: make it again
+        again = self.store.read(*secret)
+        self.assertNotEqual(again.fields, first.fields)
+        self.assertEqual(again.previous, first.previous)
 
 
     def test_init_one_file_adds_only_what_is_missing(self):

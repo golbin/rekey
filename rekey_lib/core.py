@@ -230,7 +230,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
 # ================================================================ rotate
 
 
-def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
+def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False) -> int:
     from .setup import preflight
 
     if not ctx.dry_run and not preflight(ctx, items):
@@ -240,7 +240,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
         m = ctx.meta(item[1])
         if not force and (m.get("locked") or "check" in m.get("tags", [])):
             skipped.append((item, m.get("locked") or m.get("note") or _("check before rotating")))
-        elif (rec := ctx.read(*item)) and rec.state.get("revoke") is not None:   # never again before the old one is revoked
+        elif not redo and (rec := ctx.read(*item)) and rec.state.get("revoke") is not None:   # never again before the old one is revoked
             waiting.append(item)
         else:
             todo.append(item)
@@ -256,6 +256,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
             say(dim(f"  • {item[1]}: {why}  (" + _("to do it anyway: --force") + ")"))
         if waiting:
             say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
+            say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
         return 0
     if ctx.dry_run:
         say(dim(_("(dry-run: showing what would happen, changing nothing)")))
@@ -268,6 +269,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
     say("  • " + _("Places that change: {n}", n=len({t.rel for i in todo for t in ctx.users(i)})))
     if waiting:
         say(dim("  • " + _("Already rotated: {n} (revoke the old keys with: {cmd})", n=len(waiting), cmd="rekey revoke " + " ".join(i[1] for i in waiting))))
+        say(dim("    " + _("A new key came out wrong? Make it again: rekey rotate <key> --redo")))
     for item, why in skipped:
         say(dim("  • " + _("skipped {key}: {why}", key=item[1], why=why)))
     if not ctx.dry_run and ctx.interactive and interactive() and not ask("\n" + _("Start?")):
@@ -351,7 +353,11 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], li
         raise RekeyError(_("The new value lacks {fields}", fields=sorted(missing)))
     if good:
         ok(_("the new key works"))
-    new_rec = Record(new, previous=old, state={"meta": meta, "revoke": (rec.state.get("meta", {}) if rec else {}) if old else None})
+    if rec and rec.state.get("revoke") is not None:     # --redo: the key that still has to be revoked stays the old one
+        previous, revoke = rec.previous, rec.state["revoke"]
+    else:
+        previous, revoke = old, ((rec.state.get("meta", {}) if rec else {}) if old else None)
+    new_rec = Record(new, previous=previous, state={"meta": meta, "revoke": revoke})
     new_rec.stamp()
     ctx.write(*item, new_rec)
     ok(_("saved to {store} (the old value is kept until it is revoked)", store=ctx.store.label))
