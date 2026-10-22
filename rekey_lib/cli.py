@@ -38,18 +38,18 @@ def ctx_for(args) -> core.Ctx:
 
 def cmd_ls(args) -> int:
     ctx = ctx_for(args)
-    rows = [(_("key"), _("service"), _("issued"), _("places"), _("tags"))]
-    for item in ctx.select(args.select or ["all"], args.only):
+    rows = [(_("key"), _("vault"), _("service"), _("issued"), _("places"), _("tags"))]
+    for item in sorted(ctx.select(args.select or ["all"], args.only), key=lambda i: (i[1], i[0])):
         m = ctx.meta(item[1])
         tags = m.get("tags", []) + (["locked"] if m.get("locked") else [])
-        rows.append((item[1], provider(item[1]).label, {"self": _("auto"), "auto": _("auto"), "admin": _("auto") + "*", "browser": _("browser")}[core.mode(item)],
+        rows.append((item[1], item[0], provider(item[1]).label, {"self": _("auto"), "auto": _("auto"), "admin": _("auto") + "*", "browser": _("browser")}[core.mode(item)],
                      str(len(ctx.users(item))), " ".join(tags)))
     width = lambda s: sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in s)
-    w = [max(width(r[i]) for r in rows) for i in range(5)]
+    w = [max(width(r[i]) for r in rows) for i in range(len(rows[0]))]
     for n, r in enumerate(rows):
         line = "  ".join(c + " " * (w[i] - width(c)) for i, c in enumerate(r)).rstrip()
         say(bold(line) if n == 0 else line)
-    counts = Counter(r[2] for r in rows[1:])
+    counts = Counter(r[3] for r in rows[1:])
     say(dim("\n" + _("Keys: {n}", n=len(rows) - 1) + " · " + " · ".join(f"{k} {n}" for k, n in counts.items())
             + (" · * " + _("automatic with an admin key, otherwise browser") if counts[_("auto") + "*"] else "")))
     return 0

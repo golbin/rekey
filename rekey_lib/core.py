@@ -85,7 +85,15 @@ class Ctx:
         return self.keys.get(name, {})
 
     def project(self, rel: str) -> str:
-        return tpl.project(self.root, rel)
+        """See tpl.project. A Supabase project ref takes the name of the project whose templates point at it."""
+        if not rel.startswith("supabase/"):
+            return tpl.project(self.root, rel)
+        ref = rel.split("/")[1]
+        def find() -> str:
+            named = Counter(tpl.project(self.root, t.rel) for t in self.templates
+                            if not t.rel.startswith("supabase/") and any(ref in raw for raw in t.lines.values()))
+            return named.most_common(1)[0][0] if named else ref
+        return self.cached("project:" + ref, find)
 
     def select(self, selectors: list[str], only: list[str] | None = None) -> list[Item]:
         """name or glob · tag:<tag> · in:<template glob> · project:<name> · all. Items tagged 'retire' only by name.

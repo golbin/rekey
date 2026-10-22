@@ -103,6 +103,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
      "中断しました。同じコマンドを再実行すれば残りから続けます。",
      "Detenido. Ejecuta el mismo comando otra vez para continuar con lo que falta."),
     ("key", "키", "密钥", "キー", "clave"),
+    ("vault", "볼트", "保险库", "保管庫", "bóveda"),
     ("service", "서비스", "服务", "サービス", "servicio"),
     ("issued", "발급", "签发", "発行", "emisión"),
     ("places", "사용처", "使用处", "使用先", "lugares"),
