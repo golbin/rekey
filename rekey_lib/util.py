@@ -127,13 +127,18 @@ def http(method: str, url: str, *, headers: dict[str, str] | None = None, body: 
     data = json.dumps(body).encode() if body is not None else None
     hdrs = {"User-Agent": "rekey", **({"Content-Type": "application/json"} if data else {}), **(headers or {})}
     req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            status, raw = r.status, r.read()
-    except urllib.error.HTTPError as e:
-        status, raw = e.code, e.read()
-    except urllib.error.URLError as e:
-        raise RekeyError(f"{method} {urllib.parse.urlsplit(url).netloc}: {e.reason}")
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                status, raw = r.status, r.read()
+            break
+        except urllib.error.HTTPError as e:
+            status, raw = e.code, e.read()
+            break
+        except (urllib.error.URLError, OSError) as e:      # OSError: a read that timed out
+            # Reads are safe to try again; a POST may already have made a key, so it isn't repeated.
+            if attempt == 2 or method != "GET":
+                raise RekeyError(f"{method} {urllib.parse.urlsplit(url).netloc}: {getattr(e, 'reason', e)}")
     try:
         return status, json.loads(raw) if raw else None
     except ValueError:
