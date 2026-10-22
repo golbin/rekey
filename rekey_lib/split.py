@@ -16,8 +16,8 @@ from .util import bold, dim, ok, say
 
 
 # Keys that must stay one value everywhere: our own services check each other with it (self), a database
-# has one password, data is encrypted with it (locked), or the service gives an account only one key.
-KEEP = {"self", "supabase-db", "heygen", "daily", "simli"}
+# has one password, or data is encrypted with it (locked).
+KEEP = {"self", "supabase-db"}
 
 
 def env_of(rel: str) -> str:

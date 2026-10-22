@@ -81,7 +81,7 @@ rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, 
 rekey rotate 'cartesia.*'     # each project gets its own key
 ```
 
-Keys that must stay one value are left alone: your own service-to-service tokens, database passwords, locked keys, and services that give an account a single key.
+Keys that must stay one value are left alone: your own service-to-service tokens, database passwords and locked keys.
 
 ## Change settings
 

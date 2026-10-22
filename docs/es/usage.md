@@ -81,7 +81,7 @@ rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, 
 rekey rotate 'cartesia.*'     # cada proyecto recibe su propia clave
 ```
 
-Las claves que deben tener un solo valor no se tocan: tokens entre tus propios servicios, contraseñas de base de datos, claves locked y servicios que dan una sola clave por cuenta.
+Las claves que deben tener un solo valor no se tocan: tokens entre tus propios servicios, contraseñas de base de datos y claves locked.
 
 ## Cambiar la configuración
 

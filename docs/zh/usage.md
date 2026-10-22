@@ -81,7 +81,7 @@ rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop、cartesia.blog�
 rekey rotate 'cartesia.*'     # 每个项目拿到自己的密钥
 ```
 
-必须保持同一个值的密钥不会拆：自家服务之间的令牌、数据库密码、locked 密钥、每个账号只给一个密钥的服务。
+必须保持同一个值的密钥不会拆：自家服务之间的令牌、数据库密码、locked 密钥。
 
 ## 修改配置
 

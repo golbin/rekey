@@ -81,7 +81,7 @@ rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop、cartesia.blog�
 rekey rotate 'cartesia.*'     # プロジェクトごとに自分のキーを受け取ります
 ```
 
-値をひとつに保つ必要があるキーはそのままです：自社サービス間のトークン、DB パスワード、locked のキー、アカウントにキーをひとつしか出さないサービス。
+値をひとつに保つ必要があるキーはそのままです：自社サービス間のトークン、DB パスワード、locked のキー。
 
 ## 設定を変える
 

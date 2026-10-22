@@ -81,7 +81,7 @@ rekey split 'cartesia.*'      # cartesia.shop → cartesia.shop, cartesia.blog, 
 rekey rotate 'cartesia.*'     # 프로젝트마다 자기 키를 받습니다
 ```
 
-값이 하나여야 하는 키는 그대로 둡니다: 우리 서비스끼리 쓰는 토큰, DB 비밀번호, locked 키, 계정당 키를 하나만 주는 서비스.
+값이 하나여야 하는 키는 그대로 둡니다: 우리 서비스끼리 쓰는 토큰, DB 비밀번호, locked 키.
 
 ## 설정 바꾸기
 
