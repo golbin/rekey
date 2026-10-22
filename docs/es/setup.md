@@ -1,0 +1,64 @@
+# Preparación
+
+rekey separa la **herramienta** (este repositorio) de los **datos del equipo** (un repositorio privado con `targets/` y `keys.toml`). Los datos del equipo no contienen valores de claves, pero sí describen tu infraestructura, así que mantenlos privados.
+
+## Todos (10 minutos)
+
+**1. Descarga la herramienta y los datos del equipo.** Pon los datos del equipo en la **misma carpeta que tus proyectos**: las rutas `targets/file/…` se toman desde ahí.
+
+```bash
+git clone https://github.com/golbin/rekey.git ~/tools/rekey
+git clone <repositorio de datos del equipo> ~/code/keys
+```
+
+Añade esto a `~/.zshrc` (o `~/.bashrc`) y abre una terminal nueva:
+
+```bash
+export REKEY_HOME=~/code/keys
+alias rekey=~/tools/rekey/rekey
+```
+
+**2. CLI de 1Password.**
+
+```bash
+brew install 1password-cli        # Linux: https://developer.1password.com/docs/cli/get-started
+```
+
+En la app de 1Password: Ajustes → Desarrollador → activa **"Integrar con 1Password CLI"**. Si no ves la bóveda (vault) del equipo, pide acceso a un administrador.
+
+**3. Comprueba.**
+
+```bash
+rekey ls                       # aparece la lista de claves: rekey funciona
+op vault get "Acme - Prod"     # aparecen los datos de la bóveda: 1Password funciona
+```
+
+Ya puedes [crear un .env local](usage.md#crear-un-env-local).
+
+## Si rotas claves (5 minutos más)
+
+```bash
+rekey setup
+```
+
+Te dice lo que falta y lo resuelve en el momento:
+- Inicio de sesión en las CLI de las plataformas que uses (`vercel`, `railway`, `supabase`, `gcloud`, `gh`…): rekey ejecuta el comando de inicio de sesión y tú solo apruebas en el navegador.
+- Claves de administrador (opcional): con ellas, las claves de OpenAI, Cloudflare y Resend se emiten sin navegador.
+
+Has terminado cuando diga que todo está listo. `rotate` hace la misma comprobación cada vez que empieza.
+
+## Si tu equipo empieza a usar rekey
+
+Ejecuta esto una vez, en un repositorio de datos del equipo vacío:
+
+```bash
+mkdir ~/code/keys && cd ~/code/keys && git init
+rekey init --vault "Acme - Prod" --source vercel --source supabase --source railway --source gcp:<proyecto>
+rekey import all        # guarda en 1Password los valores que se usan hoy
+git add . && git commit -m "rekey: initial templates"
+```
+
+- `init` lee los archivos .env bajo `~/code` y las plataformas, y escribe las plantillas. Los valores iguales se agrupan en una sola clave.
+- Si una carpeta contiene varios proyectos (por ejemplo `~/code/clients/a`, `~/code/clients/b`), añade `--group-dirs clients` para que las claves se nombren según las carpetas de dentro.
+- Nunca cambia plantillas ni nombres de claves existentes, así que puedes volver a ejecutarlo con más `--source` sin riesgo.
+- Revisa el resultado con `git diff`. Las líneas bajo un comentario `# … 추정` ("supuesto") son variables de Vercel cuyo valor no se puede leer y que se emparejaron por nombre.

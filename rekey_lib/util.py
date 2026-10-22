@@ -1,0 +1,170 @@
+"""Small helpers. Rule for the whole codebase: secret values go to child processes on
+stdin or through 0600 temp files. They are never printed or logged."""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import secrets
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from typing import Any, Iterator
+
+
+class RekeyError(Exception):
+    """An error whose message is meant for the person running rekey."""
+
+
+# ---------------------------------------------------------------- output
+
+_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+
+
+def _c(code: str, text: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if _COLOR else text
+
+
+def say(msg: str = "") -> None:
+    print(msg, flush=True)
+
+
+def ok(msg: str) -> None:
+    say(_c("32", "  ✓ ") + msg)
+
+
+def warn(msg: str) -> None:
+    say(_c("33", "  ! ") + msg)
+
+
+def fail(msg: str) -> None:
+    say(_c("31", "  ✗ ") + msg)
+
+
+def step(msg: str) -> None:
+    say(_c("36;1", "▸ ") + _c("1", msg))
+
+
+def dim(text: str) -> str:
+    return _c("2", text)
+
+
+def bold(text: str) -> str:
+    return _c("1", text)
+
+
+# ---------------------------------------------------------------- values
+
+
+def new_secret(fmt: str = "hex") -> str:
+    if fmt == "password":  # letters and digits only: survives URLs and shells unescaped
+        abc = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+        return "".join(secrets.choice(abc) for _ in range(32))
+    return secrets.token_hex(32)
+
+
+# ---------------------------------------------------------------- processes
+
+
+def run(cmd: list[str], *, stdin: str | None = None, cwd: str | None = None,
+        check: bool = True, timeout: int = 300) -> subprocess.CompletedProcess:
+    try:
+        p = subprocess.run(cmd, input=stdin, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        raise RekeyError(f"`{cmd[0]}`이(가) 설치되어 있지 않습니다")
+    except subprocess.TimeoutExpired:
+        raise RekeyError(f"`{' '.join(cmd[:3])}` 시간 초과")
+    if check and p.returncode:
+        # These CLIs never echo stdin, so their stderr is safe to show.
+        tail = (p.stderr or p.stdout).strip().splitlines()[-4:]
+        raise RekeyError(f"`{' '.join(cmd[:4])}` 실패: " + " / ".join(tail))
+    return p
+
+
+def succeeds(cmd: list[str]) -> bool:
+    try:
+        return run(cmd, check=False, timeout=40).returncode == 0
+    except RekeyError:
+        return False
+
+
+def have(cmd: str) -> bool:
+    return shutil.which(cmd) is not None
+
+
+@contextlib.contextmanager
+def private_file(content: str, suffix: str = "") -> Iterator[str]:
+    """A 0600 temp file, removed afterwards, for CLIs that only read files."""
+    fd, path = tempfile.mkstemp(prefix="rekey-", suffix=suffix)
+    try:
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        yield path
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(path)
+
+
+# ---------------------------------------------------------------- HTTP
+
+
+def http(method: str, url: str, *, headers: dict[str, str] | None = None, body: Any = None) -> tuple[int, Any]:
+    data = json.dumps(body).encode() if body is not None else None
+    hdrs = {"User-Agent": "rekey", **({"Content-Type": "application/json"} if data else {}), **(headers or {})}
+    req = urllib.request.Request(url, data=data, method=method, headers=hdrs)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            status, raw = r.status, r.read()
+    except urllib.error.HTTPError as e:
+        status, raw = e.code, e.read()
+    except urllib.error.URLError as e:
+        raise RekeyError(f"{method} {urllib.parse.urlsplit(url).netloc}: {e.reason}")
+    try:
+        return status, json.loads(raw) if raw else None
+    except ValueError:
+        return status, raw.decode(errors="replace")
+
+
+def api(method: str, url: str, token: str, body: Any = None, scheme: str = "Bearer") -> Any:
+    status, data = http(method, url, headers={"Authorization": f"{scheme} {token}"}, body=body)
+    if status >= 300:
+        raise RekeyError(f"{method} {urllib.parse.urlsplit(url).path} → {status}: {str(data)[:200]}")
+    return data
+
+
+# ---------------------------------------------------------------- the person
+
+
+def interactive() -> bool:
+    return sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def ask(question: str, default: bool = True) -> bool:
+    if not interactive():
+        return False
+    ans = input(question + (" [Y/n] " if default else " [y/N] ")).strip().lower()
+    return default if not ans else ans in ("y", "yes", "ㅇ", "네", "응")
+
+
+def open_url(url: str) -> None:
+    if url and not os.environ.get("REKEY_NO_BROWSER"):
+        run(["open" if sys.platform == "darwin" else "xdg-open", url], check=False)
+
+
+def clipboard() -> str:
+    if sys.platform == "darwin":
+        return run(["pbpaste"]).stdout.strip()
+    return run(["wl-paste", "-n"] if have("wl-paste") else ["xclip", "-o", "-selection", "clipboard"]).stdout.strip()
+
+
+def set_clipboard(value: str) -> None:
+    if sys.platform == "darwin":
+        run(["pbcopy"], stdin=value)
+    else:
+        run(["wl-copy"] if have("wl-copy") else ["xclip", "-selection", "clipboard"], stdin=value)

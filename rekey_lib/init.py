@@ -1,0 +1,395 @@
+"""`rekey init`: write templates and keys.toml from what exists today.
+
+One classifier is used for every source (.env files, Vercel, Railway, GCP Secret Manager):
+a variable is either a key (→ a {{ op://... }} reference, grouped by value so a key copied
+to ten places becomes one item) or a plain setting (→ written as is, except in local .env
+files, where settings are personal and left alone). Existing templates are never touched.
+"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import os
+import re
+from collections import Counter, defaultdict
+from urllib.parse import urlsplit
+
+from . import tpl
+from .targets import _vercel, parse_dotenv, railway_bin, read_vercel
+from .util import RekeyError, dim, fail, ok, run, say, step
+
+SKIP_DIRS = {"node_modules", ".git", ".next", "dist", "build", ".venv", "venv", "Pods", ".turbo", ".expo", "target", "third_party"}
+PLATFORM = re.compile(r"^(VERCEL|VERCEL_.*|RAILWAY_.*|TURBO_.*|NX_.*)$")
+PUBLIC = re.compile(r"^(EXPO_PUBLIC_|NEXT_PUBLIC_|VITE_|PUBLIC_)")    # shipped to browsers and apps: never a secret
+
+# Variable name → provider. First match wins; "-" means "not a key".
+NAMES = [
+    ("-", r"^(EXPO_PUBLIC_|NEXT_PUBLIC_|VITE_|PUBLIC_)|_URL$|_EMAIL$|_IDS?$|_KEY_ID$|_PROJECT$|_REGION$|_BUCKET|^(ROOM|USER_AUTH)_TOKEN$"),
+    ("anthropic", r"^ANTHROPIC_API_KEY$"), ("openai", r"^OPENAI_API_KEY$"), ("openrouter", r"^OPENROUTER_API_KEY$"),
+    ("google-api-key", r"^(GEMINI|GOOGLE)_API_KEY$"),
+    ("gcp-sa", r"(CREDENTIALS_JSON|SERVICE_ACCOUNT(_JSON)?(_BASE64)?|^GCP_SA_KEY)$"),
+    ("google-oauth", r"CLIENT_SECRET$"), ("groq", r"^GROQ_"), ("upstage", r"^UPSTAGE_"), ("deepgram", r"^DEEPGRAM_"),
+    ("assemblyai", r"^ASSEMBLYAI_"), ("elevenlabs", r"^ELEVENLABS_"), ("cartesia", r"^CARTESIA_"), ("daily", r"^DAILY_API"),
+    ("heygen", r"^HEYGEN"), ("tavily", r"^TAVILY_"), ("brave", r"^BRAVE"),
+    ("supabase", r"SUPABASE_(SERVICE_ROLE|SECRET)_KEY$"), ("supabase-token", r"^SUPABASE_ACCESS_TOKEN$"),
+    ("cloudflare", r"^CLOUDFLARE_.*TOKEN$"), ("cloudflare-turn", r"TURN_KEY_API_TOKEN$"), ("resend", r"^RESEND_API_KEY$"),
+    ("slack", r"SLACK_.*(TOKEN|SECRET)$|^SLACK_WEBHOOK"), ("polar", r"^POLAR_"),
+    ("apple", r"^APNS_KEY$"), ("expo", r"^EXPO_ACCESS_TOKEN$"),
+    ("fly", r"^FLY_API_"), ("vercel", r"^VERCEL_(ACCESS_)?TOKEN$"), ("github", r"^(GITHUB_PAT|GH_TOKEN)$"), ("sentry", r"^SENTRY_.*TOKEN$"),
+    ("meta", r"^META_ACCESS_TOKEN$"), ("trigger", r"^TRIGGER_SECRET"),
+    ("locked", r"MASTER_KEYS?$|ENCRYPTION_KEY$|_PAYLOAD_KEY$|_HASH_SECRET$|^SENSITIVE_KEY$"),
+    ("self", r"^((BETTER_|NEXT)?AUTH|CRON|SESSION|JWT|COOKIE|REVALIDATE|ENCRYPTION)_SECRET$|^APP_SECRET$"),
+    # Anything else that looks like a credential could belong to a third party: a person issues it in the browser.
+    # Rename an item to self.<project>.<purpose> when it is a token only your own services share.
+    ("other", r"SECRET|PASSWORD|_TOKEN$|_API_KEY$|_CLIENT_KEY$|_OTP(_CODE)?$"),
+]
+# The value's own prefix beats the name (QUALITY_LLM_API_KEY may hold an OpenAI key).
+PREFIXES = [("sk-ant-", "anthropic"), ("sk-or-", "openrouter"), ("sk-", "openai"), ("AIza", "google-api-key"), ("re_", "resend"),
+            ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github")]
+PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"), ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "CLOUDFLARE_R2_SECRET_ACCESS_KEY"),
+         ("other", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"), ("ncp", "NCP_ACCESS_KEY", "NCP_SECRET_KEY")]
+NOTES = {
+    "locked": "데이터 암호화·해시 키: 바꾸면 기존 데이터를 읽거나 검증할 수 없습니다. 키 버전 롤오버를 먼저 만드세요.",
+    "BETTER_AUTH_SECRET": "바꾸면 모든 사용자가 다시 로그인해야 합니다.",
+    "legacy": "레거시 JWT service_role 키. 새 secret key는 JWT가 아니라서, 이 값을 Bearer JWT로 쓰는 코드가 있으면 깨집니다.",
+}
+
+
+def provider_of(var: str, value: str) -> str | None:
+    name = next((p for p, rx in NAMES if re.search(rx, var)), None)
+    if name in (None, "-"):
+        return None
+    if name in ("self", "other"):
+        return next((p for pre, p in PREFIXES if value.startswith(pre)), name)
+    return name
+
+
+def looks_secret(var: str, value: str) -> bool:
+    if provider_of(var, value) or any(value.startswith(p) for p, _ in PREFIXES):
+        return True
+    if "-----BEGIN" in value or '"private_key"' in value or re.search(r"://[^/@\s]+:[^/@\s]+@", value):
+        return True
+    return bool(re.fullmatch(r"[A-Za-z0-9_\-+/=]{24,}", value) and re.search(r"\d", value) and re.search(r"[A-Z]", value))
+
+
+# ================================================================ grouping values into items
+
+
+class Index:
+    """value → item. Items get a temporary name here; init() names them once every use is known."""
+
+    def __init__(self, vault: str):
+        self.vault = vault
+        self.by_value: dict[str, str] = {}               # sha256(value) -> temporary name
+        self.label: dict[str, str] = {}                  # temporary name -> preferred label (e.g. Supabase project)
+        self.notes: dict[str, set[str]] = defaultdict(set)
+        self.fixed: set[str] = set()                     # names already used by existing templates
+
+    def seed(self, ctx) -> None:
+        """Keep the names of keys that existing templates already use."""
+        from .core import current
+        from .store import FileStore
+
+        if ctx.items() and ctx.store.check():
+            ctx.store = FileStore("")        # 1Password not reachable: read current values from the targets instead
+        for item in ctx.items():
+            _, f = current(ctx, item)
+            if "access_key_id" in f and "secret_access_key" in f:
+                value = f["access_key_id"] + "\0" + f["secret_access_key"]
+            elif f.get("credential_base64") and not f.get("credential"):
+                value = base64.b64decode(f["credential_base64"]).decode(errors="replace")
+            else:
+                value = f.get("credential") or f.get("password")
+            if value:
+                self.by_value[hashlib.sha256(value.encode()).hexdigest()] = item[1]
+                self.fixed.add(item[1])
+
+    def item(self, prov: str, value: str) -> str:
+        sha = hashlib.sha256(value.encode()).hexdigest()
+        return self.by_value.setdefault(sha, f"{prov}.{sha[:12]}")
+
+    def known(self, value: str) -> str | None:
+        return self.by_value.get(hashlib.sha256(value.encode()).hexdigest())
+
+    def ref(self, name: str, field: str = "credential") -> str:
+        return tpl.ref(self.vault, name, field)
+
+
+GROUP_DIRS: set[str] = set()     # folders that hold several projects (--group-dirs), e.g. "clients"
+
+
+def project_of(rel: str) -> str:
+    parts = rel.split("/")
+    return parts[1] if parts[0] in GROUP_DIRS and len(parts) > 2 else parts[0]
+
+
+def classify(ix: Index, env: dict[str, str], *, settings: bool) -> dict[str, str]:
+    """Template lines for one target's variables."""
+    lines, used = {}, set()
+    for prov, a, b in PAIRS:
+        if env.get(a) and env.get(b):
+            name = ix.item(prov, env[a].strip() + "\0" + env[b].strip())
+            lines[a], lines[b] = ix.ref(name, "access_key_id"), ix.ref(name, "secret_access_key")
+            used |= {a, b}
+    for var, value in env.items():
+        value = (value or "").strip()            # a stray trailing newline must not split one key into two
+        if var in used or not value or PLATFORM.match(var):
+            continue
+        if PUBLIC.match(var):
+            if settings:
+                lines[var] = value.replace("\n", " ")
+            continue
+        u = urlsplit(value) if "://" in value else None
+        if u and u.password and "supabase" in (u.hostname or ""):
+            ref = (u.username or "").rpartition(".")[2] or (u.hostname or "").split(".")[1]
+            name = ix.item("supabase-db", u.password)
+            ix.label[name] = ref
+            lines[var] = value.replace(f":{u.password}@", ":" + ix.ref(name, "password") + "@", 1)
+            continue
+        if var in ("DB_PASSWORD", "SUPABASE_DB_PASSWORD") and "." in env.get("DB_USER", ""):
+            name = ix.item("supabase-db", value)
+            ix.label[name] = env["DB_USER"].rpartition(".")[2]
+            lines[var] = ix.ref(name, "password")
+            continue
+        prov = provider_of(var, value)
+        if prov is None and looks_secret(var, value):
+            prov = "other"
+        if prov is None:
+            if settings and not looks_secret(var, value):
+                lines[var] = value.replace("\n", " ")
+            continue
+        field = "credential"
+        if prov == "gcp-sa" and var.endswith("_BASE64"):
+            field = "credential_base64"
+        if prov == "gcp-sa" and field == "credential":
+            try:
+                json.loads(value)
+            except ValueError:
+                prov = "other"
+        tag = prov
+        if prov == "locked":
+            prov, tag = "self", "locked"
+        same = base64.b64decode(value).decode(errors="replace") if field == "credential_base64" else value
+        name = ix.item(prov, same)
+        if tag == "locked":
+            ix.notes[name].add("locked")
+        if var in NOTES:
+            ix.notes[name].add(var)
+        lines[var] = ix.ref(name, field)
+    return lines
+
+
+# ================================================================ sources
+
+
+def env_files(root: str):
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and d != "worktrees"]
+        for fn in fns:
+            if re.match(r"^(\.env.*|\.dev\.vars|.*\.env)$", fn) and not re.search(r"example|sample|xcode|\.tpl$|\.bak", fn):
+                yield os.path.join(dp, fn)
+
+
+def from_files(ix: Index, root: str, home: str) -> dict[str, dict[str, str]]:
+    out = {}
+    for path in env_files(root):
+        rel = os.path.relpath(path, root)
+        if rel.startswith(os.path.relpath(home, root)) or "/.vercel/" in rel:
+            continue
+        with open(path, errors="ignore") as f:
+            lines = classify(ix, parse_dotenv(f.read()), settings=False)
+        if lines:
+            out[f"file/{rel}"] = lines
+    return out
+
+
+def from_vercel(ix: Index, ctx, files: dict[str, dict[str, str]], root: str) -> dict[str, dict[str, str]]:
+    """Readable values are classified; sensitive ones are matched by name to the linked folder's .env."""
+    linked = defaultdict(list)
+    for dp, dns, fns in os.walk(root):
+        dns[:] = [d for d in dns if d not in SKIP_DIRS and d != "worktrees"]
+        if dp.endswith("/.vercel") and "project.json" in fns:
+            with open(os.path.join(dp, "project.json")) as f:
+                linked[json.load(f).get("projectName")].append(os.path.relpath(os.path.dirname(dp), root))
+    out = {}
+    teams = [t["id"] for t in _vercel(ctx, "GET", "/v2/teams").get("teams", [])]
+    projects = [p["name"] for team in teams for p in _vercel(ctx, "GET", "/v9/projects?limit=100", team=team).get("projects", [])]
+    for project in projects:
+        for env in ("production", "preview", "development"):
+            values = read_vercel(ctx, [project, env], [])
+            readable = {k: v for k, v in values.items() if v is not None}
+            lines = classify(ix, readable, settings=True)
+            for var in (k for k, v in values.items() if v is None):
+                guess = next((tl[var] for d in linked.get(project, []) for rel, tl in files.items()
+                              if rel.startswith(f"file/{d}/") and var in tl), None)
+                if guess:
+                    lines["# " + var] = f"# {var}: Vercel에서 값을 읽을 수 없어, 연결된 로컬 폴더의 .env와 같은 키로 추정"
+                    lines[var] = guess
+                else:
+                    lines[var] = f"# {var}: Vercel에서 값을 읽을 수 없는 sensitive 변수 (관리 안 함)"
+            if lines:
+                out[f"vercel/{project}/{env}"] = lines
+    return out
+
+
+def from_supabase(ix: Index, ctx) -> dict[str, dict[str, str]]:
+    """Edge Function secrets are listed as sha256 digests: matched against every known value."""
+    from .providers import _supabase
+
+    out = {}
+    data = json.loads(run(["supabase", "projects", "list", "-o", "json"]).stdout)
+    for p in data.get("projects", []) if isinstance(data, dict) else data:
+        ref = p.get("ref") or p["id"]
+        for k in _supabase(ctx, "GET", f"/v1/projects/{ref}/api-keys?reveal=true"):   # name supabase keys by project
+            if (v := k.get("api_key")) and (hit := ix.known(v)) and hit.startswith("supabase."):
+                ix.label[hit] = p["name"] + ("-legacy" if v.startswith("eyJ") else "")
+                if v.startswith("eyJ"):
+                    ix.notes[hit].add("legacy")
+        rows = json.loads(run(["supabase", "secrets", "list", "--project-ref", ref, "-o", "json"], check=False).stdout or "[]")
+        lines = {r["name"]: ix.ref(ix.by_value[r["value"]]) if r.get("value") in ix.by_value else f"# {r['name']}: 값을 알 수 없는 secret"
+                 for r in rows if not r["name"].startswith("SUPABASE_")}
+        if lines:
+            out[f"supabase/{ref}"] = lines
+    return out
+
+
+def from_railway(ix: Index) -> dict[str, dict[str, str]]:
+    out = {}
+    def names(v) -> list[str]:
+        rows = v.get("edges", []) if isinstance(v, dict) else v or []
+        return [(r.get("node") or r)["name"] for r in rows]
+
+    for p in json.loads(run([railway_bin(), "list", "--json"]).stdout):
+        envs, services = names(p.get("environments")), names(p.get("services"))
+        for env in envs:
+            for svc in services:
+                r = run([railway_bin(), "variable", "list", "--json", "-p", p["id"], "-e", env, "-s", svc], check=False)
+                if r.returncode == 0 and (lines := classify(ix, json.loads(r.stdout), settings=True)):
+                    out[f"railway/{p['name']}/{env}/{svc}"] = lines
+    return out
+
+
+def from_gcp(ix: Index, project: str) -> dict[str, dict[str, str]]:
+    env = {}
+    for name in run(["gcloud", "secrets", "list", "--project", project, "--format", "value(name)"]).stdout.split():
+        r = run(["gcloud", "secrets", "versions", "access", "latest", "--secret", name, "--project", project], check=False)
+        if r.returncode == 0:
+            env[name] = r.stdout
+    lines = classify(ix, env, settings=False)
+    return {f"gcp/{project}": lines} if lines else {}
+
+
+# ================================================================ writing
+
+
+def where(rel: str) -> str:
+    kind, *addr = rel.split("/")
+    if kind == "file":
+        return project_of("/".join(addr))
+    return addr[2] if kind == "railway" else addr[1] if kind == "github" else addr[0]
+
+
+def final_names(ix: Index, found: dict[str, dict[str, str]]) -> dict[str, str]:
+    """provider.project[.variable], after the project that uses the key most."""
+    uses = defaultdict(list)
+    for rel, lines in found.items():
+        for var, raw in lines.items():
+            for _, name, _ in tpl.REF.findall(raw):
+                uses[name].append((where(rel), var))
+    names, taken = {}, set(ix.fixed)
+    for old in sorted(uses, key=lambda n: -len(uses[n])):
+        if old in ix.fixed:
+            continue
+        prov = old.split(".")[0]
+        top = Counter(p for p, _ in uses[old]).most_common()
+        top = sorted(top, key=lambda pc: (-pc[1], pc[0]))[0][0]
+        var = Counter(v for _, v in uses[old]).most_common(1)[0][0]
+        base = f"{prov}.{ix.label.get(old) or top}"
+        if prov in ("self", "other"):
+            base += "." + var
+        base = re.sub(r"[^a-z0-9.\-]+", "-", base.lower()).strip("-")
+        new, n = base, 2
+        while new in taken:
+            new, n = f"{base}-{n}", n + 1
+        taken.add(new)
+        names[old] = new
+    return names
+
+
+
+def init(ctx, *, vault: str, sources: list[str], tags: dict[str, list[str]], retire: list[str],
+         group_dirs: list[str] = ()) -> int:
+    GROUP_DIRS.update(group_dirs)
+    ix = Index(vault)
+    ix.seed(ctx)
+    step("로컬 .env 파일")
+    found = from_files(ix, ctx.root, ctx.home)
+    ok(f"{len(found)}개 파일")
+    for src in sources:
+        step(src)
+        try:
+            if src == "vercel":
+                part = from_vercel(ix, ctx, found, ctx.root)
+            elif src == "supabase":
+                part = from_supabase(ix, ctx)
+            elif src == "railway":
+                part = from_railway(ix)
+            elif src.startswith("gcp:"):
+                part = from_gcp(ix, src[4:])
+            else:
+                raise RekeyError(f"모르는 소스: {src}")
+            found |= part
+            ok(f"{len(part)}곳")
+        except RekeyError as e:
+            fail(f"{src}: {e}")
+
+    for old, new in final_names(ix, found).items():
+        ix.notes[new] = ix.notes.pop(old, set())
+        for lines in found.values():
+            for var, raw in lines.items():
+                lines[var] = raw.replace(f"/{old}/", f"/{new}/")
+
+    written = 0
+    for rel, lines in sorted(found.items()):
+        path = os.path.join(ctx.home, "targets", rel + ".tpl")
+        if os.path.exists(path):
+            continue
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write("".join(v + "\n" if v.startswith("# ") else f"{k}={v}\n" for k, v in lines.items()))
+        written += 1
+
+    users = defaultdict(set)
+    for rel, lines in found.items():
+        for raw in lines.values():
+            for _, name, _ in tpl.REF.findall(raw):
+                users[name].add(rel)
+    keys_path = os.path.join(ctx.home, "keys.toml")
+    have = open(keys_path).read() if os.path.exists(keys_path) else ""
+    blocks = []
+    for name in sorted(users):
+        if f'["{name}"]' in have:
+            continue
+        t = sorted(tag for tag, prefixes in tags.items() if any(r.startswith(p) for r in users[name] for p in prefixes))
+        notes = ix.notes.get(name, set())
+        if retire and all(any(r.startswith(p) for p in retire) for r in users[name]):
+            t.append("retire")
+        if "legacy" in notes:
+            t.append("check")
+        entry = []
+        if "locked" in notes:
+            entry.append(f'locked = "{NOTES["locked"]}"')
+        note = " ".join(NOTES[n] for n in sorted(notes) if n in NOTES and n != "locked")
+        if note:
+            entry.append(f'note = "{note}"')
+        if t:
+            entry.append("tags = [" + ", ".join(f'"{x}"' for x in t) + "]")
+        if entry:
+            blocks.append(f'["{name}"]\n' + "\n".join(entry) + "\n")
+    with open(keys_path, "a") as f:
+        f.write("\n".join(blocks))
+    ok(f"템플릿 {written}개 새로 씀 · 키 {len(users)}개 · keys.toml 항목 {len(blocks)}개 추가")
+    say(dim("  다음: rekey ls  ·  git diff  ·  rekey import all (현재 값을 1Password로)"))
+    return 0

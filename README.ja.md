@@ -1,0 +1,46 @@
+[English](README.md) · [한국어](README.ko.md) · [中文](README.zh.md) · **日本語** · [Español](README.es.md)
+
+# rekey
+
+API キーをコマンドひとつで再発行し、使っているすべての場所（.env、Vercel、Railway、Supabase、GCP、GitHub…）に反映して、古いキーを無効化します。
+
+```bash
+rekey rotate 'openai.*'   # 新しいキーを発行 → すべての使用先を更新 → 再デプロイを確認
+rekey revoke 'openai.*'   # 古いキーを無効化
+```
+
+- 各サービスに詳しくなくても大丈夫です。API で発行できるキーは自動で処理します。それ以外は rekey が該当ページを開くので、キーを作って**コピー**するだけです。
+- キーの値は画面に表示されません。1Password にだけ保存されます。
+- Python 3.11 以上、標準ライブラリのみ。
+- CLI のメッセージは現在韓国語のみです。英語メッセージは対応予定です。
+
+## 仕組み
+
+| 何を | どこに |
+|---|---|
+| キーの値 | 1Password（1 アイテム = 1 キー） |
+| 各キーの使用先と通常の設定値 | チームの非公開リポジトリの `targets/**.tpl` |
+| 例外情報（ロック・タグ・メモ） | チームの非公開リポジトリの `keys.toml` |
+
+テンプレートは 1Password 標準の書式そのままで、ファイルのパスが値を書き込む場所を表します。
+
+```
+# targets/vercel/shop/production.tpl  →  Vercel プロジェクト "shop" の production 環境
+APP_URL=https://shop.example.com
+OPENAI_API_KEY={{ op://Acme - Prod/openai.shop/credential }}
+```
+
+## ガイド
+
+1. [準備](docs/ja/setup.md)：10 分
+2. [使い方](docs/ja/usage.md)
+3. 状況別：[キーが漏れた](docs/ja/situations/key-leaked.md) · [プラットフォームが侵害された](docs/ja/situations/platform-breach.md) · [メンバーが抜けた](docs/ja/situations/member-left.md)
+
+## 開発
+
+```bash
+python3 -m unittest discover -s tests
+REKEY_TEST_CLIPBOARD=1 python3 -m unittest discover -s tests -p test_interactive.py   # 実際の端末操作を再現（macOS、クリップボードを使用）
+```
+
+MIT License
