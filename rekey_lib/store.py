@@ -111,12 +111,14 @@ class OnePassword:
                 run(["op", "item", "create", "--vault", vault, "--template", path], timeout=60)
 
 
-    def move(self, vault: str, name: str, to_vault: str, to_name: str) -> None:
-        """Move and rename an item. Nothing is deleted for good: op keeps the original in Recently Deleted."""
+    def item_id(self, vault: str, name: str) -> str:
+        return (self._get(vault, name) or {}).get("id", "")
+
+    def move(self, vault: str, item_id: str, to_vault: str, to_name: str) -> None:
+        """Rename, then move, by id: names may collide in between. op keeps a moved original in Recently Deleted."""
+        run(["op", "item", "edit", item_id, "--vault", vault, "--title", to_name], timeout=60)
         if to_vault != vault:
-            run(["op", "item", "move", name, "--current-vault", vault, "--destination-vault", to_vault], stdin="y\n", timeout=60)
-        if to_name != name:
-            run(["op", "item", "edit", name, "--vault", to_vault, "--title", to_name], timeout=60)
+            run(["op", "item", "move", item_id, "--current-vault", vault, "--destination-vault", to_vault], stdin="y\n", timeout=60)
 
 
 class FileStore:
@@ -149,9 +151,12 @@ class FileStore:
     def read_all(self, vault: str) -> dict[str, Record]:
         return {k.split("/", 1)[1]: Record(**d) for k, d in self._load().items() if k.startswith(vault + "/")}
 
-    def move(self, vault: str, name: str, to_vault: str, to_name: str) -> None:
+    def item_id(self, vault: str, name: str) -> str:
+        return f"{vault}/{name}" if f"{vault}/{name}" in self._load() else ""
+
+    def move(self, vault: str, item_id: str, to_vault: str, to_name: str) -> None:
         data = self._load()
-        data[f"{to_vault}/{to_name}"] = data.pop(f"{vault}/{name}")
+        data[f"{to_vault}/{to_name}"] = data.pop(item_id)
         self._save(data)
 
     def write(self, vault: str, name: str, rec: Record, tags: list[str]) -> None:

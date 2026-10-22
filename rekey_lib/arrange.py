@@ -88,16 +88,23 @@ def arrange(ctx, pattern: str) -> int:
         if not ctx.store.has_vault(vault):
             ctx.store.create_vault(vault)
             ok(_("vault '{vault}' created", vault=vault))
+    # Ids first, while every name is still unique; then rename and move by id.
+    ids = {(ov, on): ctx.store.item_id(ov, on) for (ov, on), _n, _t, carries in changed if carries}
     for (ov, on), (nv, nn), _ts, carries in changed:
         if carries:
-            ctx.store.move(ov, on, nv, nn)
-    for (ov, on), (nv, nn), ts, _carries in changed:
+            ctx.store.move(ov, ids[(ov, on)], nv, nn)
+    # One pass per template, so a new name that equals another key's old name is never renamed twice.
+    renames: dict[str, dict[tuple[str, str], tuple[str, str]]] = defaultdict(dict)
+    for old, new, ts, _carries in changed:
         for t in ts:
-            path = os.path.join(ctx.home, "targets", t.rel + ".tpl")
-            with open(path) as f:
-                text = f.read()
-            with open(path, "w") as f:
-                f.write(text.replace(f"op://{ov}/{on}/", f"op://{nv}/{nn}/"))
+            renames[t.rel][old] = new
+    for rel, mapping in renames.items():
+        path = os.path.join(ctx.home, "targets", rel + ".tpl")
+        with open(path) as f:
+            text = f.read()
+        swap = lambda m: "op://{}/{}/".format(*mapping.get((m[1], m[2]), (m[1], m[2])))
+        with open(path, "w") as f:
+            f.write(re.sub(r"op://([^/{}]+)/([^/{}]+)/", swap, text))
     # keys.toml, rebuilt: each final name gets the notes and tags of the keys it came from.
     renamed = {on for (_ov, on), _n, _t, _r in changed}
     merged = {n: dict(m) for n, m in ctx.keys.items() if n not in renamed}

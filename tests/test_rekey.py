@@ -203,6 +203,8 @@ class Flow(unittest.TestCase):
         moved = [n for v, n in ctx.items() if n.startswith("self.") and ctx.read(v, n)]
         self.assertTrue(moved)                                              # the 1Password record moved too
         self.run_(core.sync, ctx, ctx.templates)                           # and every reference still resolves
+        names = [n for _v, n in ctx.items()]
+        self.assertEqual(len(names), len(set(names)))                      # no two keys collapsed into one
 
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
