@@ -62,6 +62,13 @@ rekey revoke openai.shop
 - Si algo se interrumpe, ejecuta el mismo comando otra vez: continúa con lo que falta. Una clave rotada no se vuelve a rotar hasta revocar la anterior.
 - Si no se puede escribir en algunos lugares, el resto sigue adelante y al final se muestra el comando para reintentarlos.
 
+Si quieres revisar antes de que cambie nada, en dos pasos:
+
+```bash
+rekey issue project:shop     # claves nuevas solo en 1Password
+rekey apply project:shop     # luego ponerlas en su sitio; cada redespliegue se pregunta
+```
+
 ## Varias claves a la vez
 
 ```bash
