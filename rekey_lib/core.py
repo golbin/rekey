@@ -234,7 +234,8 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
         else:
             todo.append(item)
     modes = {i: mode(i, ctx) for i in todo}
-    todo.sort(key=lambda i: (modes[i] == "browser", i[1]))
+    # A DB password has no overlap: the old one dies when the new one is saved. Do those last, right before the redeploy.
+    todo.sort(key=lambda i: (i[1].startswith("supabase-db."), modes[i] == "browser", i[1]))
     browser = [i for i in todo if modes[i] == "browser"]
 
     say()
