@@ -47,8 +47,8 @@ rekey rotate openai.shop
    - ¿Te detuviste a medias? Ejecuta el mismo comando otra vez: las claves ya hechas se saltan. ¿La clave nueva quedó mal? `rekey rotate <clave> --redo`.
    - ¿Cambias de idea antes de revocar? `rekey undo <clave>` vuelve a poner la clave anterior en todas partes y borra la nueva.
 4. Se guarda en 1Password. El valor anterior se conserva hasta revocarlo.
-5. Se actualizan todos los lugares. Vercel production y Railway se vuelven a desplegar, y rekey espera a que los despliegues estén sanos.
-   - Para desplegar cuando te convenga (llamadas en curso, blue/green): `--no-deploy` y luego tu despliegue habitual o `rekey deploy <plantilla>`.
+5. Se actualizan todos los lugares. Luego rekey pregunta si redesplegar ahora Vercel production y Railway (por defecto: no) y, si dices que sí, espera a que estén sanos.
+   - Si reiniciar cortaría sesiones en curso, responde N y despliega luego a tu manera o con `rekey deploy <plantilla>`.
    - Supabase Edge Functions, Fly y Workers lo aplican al instante. GitHub Actions lo usa desde la siguiente ejecución.
    - **Los servicios que leen GCP Secret Manager necesitan un reinicio** para usar la clave nueva.
 6. rekey pregunta si revocar ya la clave anterior. Responde N para observar un poco más, y después:

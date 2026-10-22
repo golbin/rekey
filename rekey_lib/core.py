@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import fnmatch
 import os
+import re
 import time
 import tomllib
 from collections import Counter
@@ -198,6 +199,20 @@ def resync_hint(rels: list[str]) -> str:
     return "rekey sync " + " ".join(f"targets/{r}.tpl" for r in dict.fromkeys(rels))
 
 
+def offer_deploy(ctx: Ctx, actions: list[tuple]) -> list[str] | None:
+    """Redeploying restarts live services, so it happens only when the person says so (default: no).
+    The deploy failures, or None when the redeploy is left for later."""
+    actions = list(dict.fromkeys(actions))
+    if not actions or ctx.dry_run:
+        return []
+    rels = ["/".join(a) + ("/production" if a[0] == "vercel" else "") for a in actions]
+    say("\n" + _("The new values are set. They take effect when these redeploy:") + " " + ", ".join(rels))
+    if ctx.interactive and interactive() and ask(_("Redeploy now? (N: deploy later yourself)"), default=False):
+        return deploy(ctx, actions)
+    say("    " + _("Your own deploy works, or:") + " " + bold("rekey deploy " + " ".join(rels)))
+    return None
+
+
 def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
     actions = list(dict.fromkeys(actions))
     if not actions or ctx.dry_run:
@@ -243,7 +258,7 @@ def deploy(ctx: Ctx, actions: list[tuple], wait: int = 900) -> list[str]:
 # ================================================================ rotate
 
 
-def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False, redeploy: bool = True) -> int:
+def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = False) -> int:
     from .setup import preflight
 
     if not ctx.dry_run and not preflight(ctx, items):
@@ -311,12 +326,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         stopped = True
         warn(_("Stopping here. Finished keys stay as they are."))
         later += [i for i in todo if i not in done and i not in later]
-    if redeploy:
-        problems += deploy(ctx, actions)
-    elif actions and not ctx.dry_run:
-        rels = sorted({"/".join(a) + ("/production" if a[0] == "vercel" else "") for a in actions})
-        warn(_("Not redeployed yet. The new values are set but take effect on the next deploy:") + " " + ", ".join(rels))
-        say("    " + _("Your own deploy works, or:") + " " + bold("rekey deploy " + " ".join(rels)))
+    problems += offer_deploy(ctx, actions) or []
 
     say()
     step(_("Result"))
@@ -343,6 +353,9 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto") -> tuple[list[tuple], li
     ctx.vault = item[0]
     prov, m = provider(item[1]), ctx.meta(item[1])
     need = ctx.fields(item)
+    if how == "self" and any(re.match(r"[A-Za-z]{2,10}_", v) for v in old.values()):
+        # rk_…, sk_…: a service issued it, so a random value would be rejected wherever it is checked.
+        raise Skip(_("the old value looks issued by a service ({prefix}…), not made up: rename the key after its service", prefix=next(iter(old.values())).split("_")[0] + "_"))
     new, meta = None, {}
     if prov.issue and not (how == "browser" and prov.admin):     # no admin key: skip the API, go to the browser
         try:
@@ -488,8 +501,11 @@ def undo(ctx: Ctx, items: list[Item]) -> int:
         ctx.write(*item, Record(rec.previous, previous=rec.fields,
                                 state={"meta": rec.state["revoke"], "revoke": rec.state.get("meta") or {}, "undo": True}))
         done.append(item)
-    failed += deploy(ctx, actions)
-    if not failed and done:
+    deployed = offer_deploy(ctx, actions)
+    failed += deployed or []
+    if deployed is None and actions:             # services still run the new key: deleting it now would break them
+        say("    " + _("After the deploy, delete the new keys:") + " " + bold("rekey revoke " + " ".join(i[1] for i in done)))
+    elif not failed and done:
         revoke(ctx, [i for i in done])
     if failed:
         warn(_("Left:") + " " + ", ".join(failed))

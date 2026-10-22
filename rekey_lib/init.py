@@ -48,7 +48,7 @@ NAMES = [
 ]
 # The value's own prefix beats the name (QUALITY_LLM_API_KEY may hold an OpenAI key).
 PREFIXES = [("sk-ant-", "anthropic"), ("sk-or-", "openrouter"), ("sk-", "openai"), ("AIza", "google-api-key"), ("re_", "resend"),
-            ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github"), ("sk_live_", "stripe"), ("rk_live_", "stripe")]
+            ("gsk_", "groq"), ("sb_secret_", "supabase"), ("sntrys_", "sentry"), ("github_pat_", "github"), ("ghp_", "github"), ("sk_live_", "stripe"), ("rk_live_", "stripe"), ("rk_", "other")]
 # Two variables that are one key: (provider, var, field, var, field).
 PAIRS = [("cloudflare", "R2_ACCESS_KEY_ID", "access_key_id", "R2_SECRET_ACCESS_KEY", "secret_access_key"),
          ("cloudflare", "CLOUDFLARE_R2_ACCESS_KEY_ID", "access_key_id", "CLOUDFLARE_R2_SECRET_ACCESS_KEY", "secret_access_key"),
