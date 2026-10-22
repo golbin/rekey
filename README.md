@@ -10,6 +10,7 @@ rekey rotate 'openai.*'   # new key → every place updated → redeploys checke
 rekey revoke 'openai.*'   # old key revoked
 ```
 
+- **Finds the keys you forgot.** `rekey init` doesn't rely on memory: it reads every .env file and Vercel, Railway, Supabase and GCP themselves, and groups identical values, so a key copied into twenty places, including a project nobody remembers, becomes one entry. For places it can't read (a teammate's laptop, a third-party dashboard), add one template line once and it is never forgotten again.
 - You don't need to know each service. Keys that can be issued by API are handled automatically; for the rest, rekey opens the right page and you just make the key and **copy** it.
 - Key values never appear on screen. They live only in 1Password.
 - Python 3.11+, standard library only.

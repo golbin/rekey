@@ -10,6 +10,7 @@ rekey rotate 'openai.*'   # clave nueva → todos los lugares actualizados → d
 rekey revoke 'openai.*'   # clave anterior revocada
 ```
 
+- **Encuentra las claves que olvidaste.** `rekey init` no depende de la memoria: lee todos los .env y Vercel, Railway, Supabase y GCP directamente, y agrupa los valores iguales, así que una clave copiada en veinte sitios, incluido un proyecto que nadie recuerda, queda como una sola entrada. Para los sitios que no puede leer (el portátil de un compañero, el panel de un tercero), añade una línea de plantilla una vez y no se volverá a olvidar.
 - No necesitas conocer cada servicio. Las claves que se pueden emitir por API se gestionan solas; para el resto, rekey abre la página correcta y solo tienes que crear la clave y **copiarla**.
 - Los valores de las claves nunca aparecen en pantalla. Solo se guardan en 1Password.
 - Python 3.11 o superior, solo la biblioteca estándar.
