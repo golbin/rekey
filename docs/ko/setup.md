@@ -4,7 +4,7 @@ rekey는 **도구**(이 저장소)와 **팀 데이터**(`targets/`, `keys.toml`�
 
 ## 모두 (10분)
 
-**1. 도구 설치와 팀 데이터 받기.** 팀 데이터는 프로젝트 폴더들과 **같은 폴더**에 둡니다. `targets/file/…` 경로가 이 위치를 기준으로 합니다.
+**1. 도구 설치와 팀 데이터 받기.** 팀 데이터는 프로젝트 폴더들과 **같은 폴더**에 둡니다. `targets/<project>/file/…` 경로가 이 위치를 기준으로 합니다.
 
 ```bash
 brew install pipx                                  # 없으면 (Linux: https://pipx.pypa.io)

@@ -4,7 +4,7 @@ rekey keeps the **tool** (this repo) apart from your **team data** (a private re
 
 ## Everyone (10 minutes)
 
-**1. Install the tool and get your team data.** Put the team data in the **same folder as your projects**: `targets/file/…` paths are relative to it.
+**1. Install the tool and get your team data.** Put the team data in the **same folder as your projects**: `targets/<project>/file/…` paths are relative to it.
 
 ```bash
 brew install pipx                                  # if you don't have it (Linux: https://pipx.pypa.io)

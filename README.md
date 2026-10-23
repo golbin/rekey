@@ -21,13 +21,13 @@ rekey revoke project:shop   # old keys revoked
 | What | Where |
 |---|---|
 | Key values | 1Password: one vault per environment (`Acme - Prod`, `Acme - Dev`, `Acme - Local`), one item per key, named `<project>.<service>` |
-| Where each key is used, plus plain settings | `targets/**.tpl` in your team's private repo |
+| Where each key is used, plus plain settings | `targets/<project>/**.tpl` in your team's private repo |
 | Exceptions (locked, tags, notes) | `keys.toml` in your team's private repo |
 
 Templates use 1Password's own syntax, and the file path says where the values go.
 
 ```
-# targets/vercel/shop/production.tpl  →  Vercel project "shop", production
+# targets/shop/vercel/shop/production.tpl  →  Vercel project "shop", production
 APP_URL=https://shop.example.com
 OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```

@@ -5,7 +5,7 @@ Run commands inside your team data folder. Commands that change things (`rotate`
 ## Build a local .env
 
 ```bash
-rekey sync targets/file/shop/web/.env.local.tpl
+rekey sync targets/shop/file/shop/web/.env.local.tpl
 ```
 
 - Keys are filled in from 1Password. Other lines in the file are left as they are.
@@ -106,9 +106,9 @@ rekey arrange "Acme - {env}"
 Platform templates also hold plain settings.
 
 ```bash
-# edit targets/vercel/shop/production.tpl, then
-rekey diff targets/vercel/shop/production.tpl   # compare with what is live
-rekey sync targets/vercel/shop/production.tpl   # write it; the redeploy is asked
+# edit targets/shop/vercel/shop/production.tpl, then
+rekey diff targets/shop/vercel/shop/production.tpl   # compare with what is live
+rekey sync targets/shop/vercel/shop/production.tpl   # write it; the redeploy is asked
 git commit -am "shop: change APP_URL"
 ```
 
@@ -127,7 +127,9 @@ To stop using a key somewhere, delete its line.
 
 ## Reference
 
-**Template path = where the values go** (under `targets/`, without `.tpl`)
+Templates sit in one folder per project: `targets/<project>/<kind>/<address>.tpl`. The folder is the project (`project:shop`); the rest says where the values go:
+
+**Template path = where the values go** (under `targets/<project>/`, without `.tpl`)
 
 | Path | Target |
 |---|---|
@@ -152,6 +154,8 @@ note = "read before rotating"   # shown by rotate and where
 tags = ["check", "retire"]      # check: rotate skips it / retire: left out of "all"
 page = "https://…"              # page to open in the browser step
 ```
+
+An entry is `["name"]`, or `["Vault/name"]` when the same name means different keys in two vaults.
 
 **Admin keys**: items `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` and `rekey.anthropic-admin` (for revoking) in any of your vaults, usually Prod, make those services automatic. `rekey setup` helps you add them.
 

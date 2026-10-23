@@ -21,13 +21,13 @@ rekey revoke project:shop   # 吊销旧密钥
 | 内容 | 位置 |
 |---|---|
 | 密钥值 | 1Password：每个环境一个 vault（`Acme - Prod`、`Acme - Dev`、`Acme - Local`），一个条目 = 一个密钥，命名为 `<project>.<service>` |
-| 每个密钥的使用位置和普通配置 | 团队私有仓库中的 `targets/**.tpl` |
+| 每个密钥的使用位置和普通配置 | 团队私有仓库中的 `targets/<project>/**.tpl` |
 | 例外信息（锁定、标签、备注） | 团队私有仓库中的 `keys.toml` |
 
 模板使用 1Password 自己的语法，文件路径就是值要写入的地方。
 
 ```
-# targets/vercel/shop/production.tpl  →  Vercel 项目 "shop" 的 production 环境
+# targets/shop/vercel/shop/production.tpl  →  Vercel 项目 "shop" 的 production 环境
 APP_URL=https://shop.example.com
 OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```

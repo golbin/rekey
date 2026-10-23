@@ -4,7 +4,7 @@ rekey 把**工具**（本仓库）和**团队数据**（存放 `targets/`、`key
 
 ## 所有人（10 分钟）
 
-**1. 安装工具并获取团队数据。** 团队数据放在和各项目**同一个文件夹**里，`targets/file/…` 路径以它为基准。
+**1. 安装工具并获取团队数据。** 团队数据放在和各项目**同一个文件夹**里，`targets/<project>/file/…` 路径以它为基准。
 
 ```bash
 brew install pipx                                  # 如果还没有（Linux：https://pipx.pypa.io）

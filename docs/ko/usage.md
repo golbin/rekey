@@ -5,7 +5,7 @@
 ## 로컬 .env 만들기
 
 ```bash
-rekey sync targets/file/shop/web/.env.local.tpl
+rekey sync targets/shop/file/shop/web/.env.local.tpl
 ```
 
 - 키는 1Password에서 채웁니다. 파일에 있던 다른 줄은 그대로 둡니다.
@@ -106,9 +106,9 @@ rekey arrange "Acme - {env}"
 플랫폼 템플릿에는 일반 설정도 들어 있습니다.
 
 ```bash
-# targets/vercel/shop/production.tpl 에서 값을 고친 뒤
-rekey diff targets/vercel/shop/production.tpl   # 지금 플랫폼 값과 비교
-rekey sync targets/vercel/shop/production.tpl   # 반영. 재배포는 묻습니다
+# targets/shop/vercel/shop/production.tpl 에서 값을 고친 뒤
+rekey diff targets/shop/vercel/shop/production.tpl   # 지금 플랫폼 값과 비교
+rekey sync targets/shop/vercel/shop/production.tpl   # 반영. 재배포는 묻습니다
 git commit -am "shop: APP_URL 변경"
 ```
 
@@ -127,7 +127,9 @@ git commit -am "shop: APP_URL 변경"
 
 ## 참고
 
-**템플릿 경로 = 값이 들어갈 곳** (`targets/` 아래, `.tpl` 생략)
+템플릿은 프로젝트마다 폴더 하나에 둡니다: `targets/<프로젝트>/<종류>/<주소>.tpl`. 폴더 이름이 프로젝트(`project:shop`)이고, 나머지가 값이 들어갈 곳입니다.
+
+**템플릿 경로 = 값이 들어갈 곳** (`targets/<프로젝트>/` 아래, `.tpl` 생략)
 
 | 경로 | 대상 |
 |---|---|
@@ -152,6 +154,8 @@ note = "교체 전에 볼 메모"       # rotate·where에 표시
 tags = ["check", "retire"]      # check: rotate가 건너뜀 / retire: all에서 빠짐
 page = "https://…"              # 브라우저 단계에서 열 페이지
 ```
+
+항목 이름은 `["이름"]`이고, 같은 이름이 두 볼트에서 다른 키라면 `["볼트/이름"]`으로 씁니다.
 
 **관리자 키**: `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 볼트 중 어디든(보통 Prod) 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
 

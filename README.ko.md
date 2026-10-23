@@ -21,13 +21,13 @@ rekey revoke project:shop   # 옛 키 폐기
 | 무엇 | 어디에 |
 |---|---|
 | 키 값 | 1Password: 환경마다 볼트 하나(`Acme - Prod`, `Acme - Dev`, `Acme - Local`), 키마다 항목 하나, 이름은 `<프로젝트>.<서비스>` |
-| 키가 쓰이는 곳, 일반 설정값 | `targets/**.tpl`: 팀 비공개 저장소 |
+| 키가 쓰이는 곳, 일반 설정값 | `targets/<project>/**.tpl`: 팀 비공개 저장소 |
 | 예외 정보 (잠금·태그·메모) | `keys.toml`: 팀 비공개 저장소 |
 
 템플릿은 1Password 표준 문법 그대로이고, 파일 경로가 곧 값이 들어갈 곳입니다.
 
 ```
-# targets/vercel/shop/production.tpl  →  Vercel 프로젝트 shop의 production 환경
+# targets/shop/vercel/shop/production.tpl  →  Vercel 프로젝트 shop의 production 환경
 APP_URL=https://shop.example.com
 OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```

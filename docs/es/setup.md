@@ -4,7 +4,7 @@ rekey separa la **herramienta** (este repositorio) de los **datos del equipo** (
 
 ## Todos (10 minutos)
 
-**1. Instala la herramienta y descarga los datos del equipo.** Pon los datos del equipo en la **misma carpeta que tus proyectos**: las rutas `targets/file/…` se toman desde ahí.
+**1. Instala la herramienta y descarga los datos del equipo.** Pon los datos del equipo en la **misma carpeta que tus proyectos**: las rutas `targets/<project>/file/…` se toman desde ahí.
 
 ```bash
 brew install pipx                                  # si no lo tienes (Linux: https://pipx.pypa.io)

@@ -5,7 +5,7 @@ Ejecuta los comandos dentro de la carpeta de datos del equipo. Los comandos que 
 ## Crear un .env local
 
 ```bash
-rekey sync targets/file/shop/web/.env.local.tpl
+rekey sync targets/shop/file/shop/web/.env.local.tpl
 ```
 
 - Las claves se rellenan desde 1Password. Las demás líneas del archivo no se tocan.
@@ -106,9 +106,9 @@ rekey arrange "Acme - {env}"
 Las plantillas de plataformas también contienen configuración normal.
 
 ```bash
-# edita targets/vercel/shop/production.tpl y luego
-rekey diff targets/vercel/shop/production.tpl   # compara con lo que está en producción
-rekey sync targets/vercel/shop/production.tpl   # escríbelo; se pregunta el redespliegue
+# edita targets/shop/vercel/shop/production.tpl y luego
+rekey diff targets/shop/vercel/shop/production.tpl   # compara con lo que está en producción
+rekey sync targets/shop/vercel/shop/production.tpl   # escríbelo; se pregunta el redespliegue
 git commit -am "shop: change APP_URL"
 ```
 
@@ -127,7 +127,9 @@ Para dejar de usar una clave en un sitio, borra su línea.
 
 ## Referencia
 
-**Ruta de la plantilla = a dónde van los valores** (dentro de `targets/`, sin `.tpl`)
+Las plantillas van en una carpeta por proyecto: `targets/<proyecto>/<tipo>/<dirección>.tpl`. La carpeta es el proyecto (`project:shop`); el resto dice a dónde van los valores:
+
+**Ruta de la plantilla = a dónde van los valores** (dentro de `targets/<proyecto>/`, sin `.tpl`)
 
 | Ruta | Destino |
 |---|---|
@@ -152,6 +154,8 @@ note = "leer antes de rotar"      # se muestra en rotate y where
 tags = ["check", "retire"]        # check: rotate la salta / retire: queda fuera de "all"
 page = "https://…"                # página que se abre en el paso de navegador
 ```
+
+Una entrada es `["nombre"]`, o `["Bóveda/nombre"]` cuando el mismo nombre es una clave distinta en dos bóvedas.
 
 **Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en cualquiera de tus bóvedas, normalmente la de Prod, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
 

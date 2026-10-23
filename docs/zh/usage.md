@@ -5,7 +5,7 @@
 ## 生成本地 .env
 
 ```bash
-rekey sync targets/file/shop/web/.env.local.tpl
+rekey sync targets/shop/file/shop/web/.env.local.tpl
 ```
 
 - 密钥从 1Password 填入。文件中的其他行保持不变。
@@ -106,9 +106,9 @@ rekey arrange "Acme - {env}"
 平台模板中也包含普通配置。
 
 ```bash
-# 修改 targets/vercel/shop/production.tpl 后
-rekey diff targets/vercel/shop/production.tpl   # 与线上值比较
-rekey sync targets/vercel/shop/production.tpl   # 写入；会询问是否重新部署
+# 修改 targets/shop/vercel/shop/production.tpl 后
+rekey diff targets/shop/vercel/shop/production.tpl   # 与线上值比较
+rekey sync targets/shop/vercel/shop/production.tpl   # 写入；会询问是否重新部署
 git commit -am "shop: change APP_URL"
 ```
 
@@ -127,7 +127,9 @@ git commit -am "shop: change APP_URL"
 
 ## 参考
 
-**模板路径 = 值写入的地方**（`targets/` 之下，省略 `.tpl`）
+模板按项目放在各自的文件夹里：`targets/<项目>/<类型>/<地址>.tpl`。文件夹就是项目（`project:shop`），其余部分表示值写入的地方：
+
+**模板路径 = 值写入的地方**（`targets/<项目>/` 之下，省略 `.tpl`）
 
 | 路径 | 目标 |
 |---|---|
@@ -152,6 +154,8 @@ note = "轮换前要看的备注"        # 在 rotate 和 where 中显示
 tags = ["check", "retire"]      # check：rotate 跳过 / retire：不包含在 all 中
 page = "https://…"              # 浏览器步骤要打开的页面
 ```
+
+条目名是 `["名称"]`；同一名称在两个保险库中是不同密钥时，写成 `["保险库/名称"]`。
 
 **管理员密钥**：在任意一个 vault（通常是 Prod）中有 `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（用于吊销）条目时，这些服务会自动处理。`rekey setup` 会帮你添加。
 

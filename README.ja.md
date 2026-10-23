@@ -21,13 +21,13 @@ rekey revoke project:shop   # 古いキーを無効化
 | 何を | どこに |
 |---|---|
 | キーの値 | 1Password：環境ごとに vault ひとつ（`Acme - Prod`、`Acme - Dev`、`Acme - Local`）、1 アイテム = 1 キー、名前は `<project>.<service>` |
-| 各キーの使用先と通常の設定値 | チームの非公開リポジトリの `targets/**.tpl` |
+| 各キーの使用先と通常の設定値 | チームの非公開リポジトリの `targets/<project>/**.tpl` |
 | 例外情報（ロック・タグ・メモ） | チームの非公開リポジトリの `keys.toml` |
 
 テンプレートは 1Password 標準の書式そのままで、ファイルのパスが値を書き込む場所を表します。
 
 ```
-# targets/vercel/shop/production.tpl  →  Vercel プロジェクト "shop" の production 環境
+# targets/shop/vercel/shop/production.tpl  →  Vercel プロジェクト "shop" の production 環境
 APP_URL=https://shop.example.com
 OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```

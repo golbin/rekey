@@ -5,7 +5,7 @@
 ## ローカルの .env を作る
 
 ```bash
-rekey sync targets/file/shop/web/.env.local.tpl
+rekey sync targets/shop/file/shop/web/.env.local.tpl
 ```
 
 - キーは 1Password から埋めます。ファイル内のほかの行はそのままです。
@@ -106,9 +106,9 @@ rekey arrange "Acme - {env}"
 プラットフォームのテンプレートには通常の設定も入っています。
 
 ```bash
-# targets/vercel/shop/production.tpl の値を直したら
-rekey diff targets/vercel/shop/production.tpl   # 実際の値と比較
-rekey sync targets/vercel/shop/production.tpl   # 反映。再デプロイは尋ねます
+# targets/shop/vercel/shop/production.tpl の値を直したら
+rekey diff targets/shop/vercel/shop/production.tpl   # 実際の値と比較
+rekey sync targets/shop/vercel/shop/production.tpl   # 反映。再デプロイは尋ねます
 git commit -am "shop: change APP_URL"
 ```
 
@@ -127,7 +127,9 @@ git commit -am "shop: change APP_URL"
 
 ## リファレンス
 
-**テンプレートのパス = 値を書き込む場所**（`targets/` 配下、`.tpl` は省略）
+テンプレートはプロジェクトごとのフォルダに置きます：`targets/<プロジェクト>/<種類>/<アドレス>.tpl`。フォルダがプロジェクト（`project:shop`）で、残りが値を書き込む場所です：
+
+**テンプレートのパス = 値を書き込む場所**（`targets/<プロジェクト>/` 配下、`.tpl` は省略）
 
 | パス | 書き込み先 |
 |---|---|
@@ -152,6 +154,8 @@ note = "ローテーション前のメモ"   # rotate と where で表示
 tags = ["check", "retire"]      # check：rotate がスキップ / retire：all から除外
 page = "https://…"              # ブラウザ手順で開くページ
 ```
+
+項目名は `["名前"]` です。同じ名前が 2 つの保管庫で別のキーなら `["保管庫/名前"]` と書きます。
 
 **管理者キー**：いずれかの vault（ふつうは Prod）に `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（無効化用）があれば、そのサービスを自動で処理します。`rekey setup` が登録を手伝います。
 

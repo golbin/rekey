@@ -21,13 +21,13 @@ rekey revoke project:shop   # claves anteriores revocadas
 | Qué | Dónde |
 |---|---|
 | Valores de las claves | 1Password: una bóveda por entorno (`Acme - Prod`, `Acme - Dev`, `Acme - Local`), un elemento por clave, con nombre `<project>.<service>` |
-| Dónde se usa cada clave y la configuración normal | `targets/**.tpl` en el repositorio privado del equipo |
+| Dónde se usa cada clave y la configuración normal | `targets/<project>/**.tpl` en el repositorio privado del equipo |
 | Excepciones (bloqueos, etiquetas, notas) | `keys.toml` en el repositorio privado del equipo |
 
 Las plantillas usan la sintaxis propia de 1Password, y la ruta del archivo indica a dónde van los valores.
 
 ```
-# targets/vercel/shop/production.tpl  →  proyecto de Vercel "shop", production
+# targets/shop/vercel/shop/production.tpl  →  proyecto de Vercel "shop", production
 APP_URL=https://shop.example.com
 OPENAI_API_KEY={{ op://Acme - Prod/shop.openai/credential }}
 ```
