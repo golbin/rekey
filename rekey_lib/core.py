@@ -452,23 +452,32 @@ def apply(ctx: Ctx, items: list[Item]) -> int:
 # ================================================================ revoke
 
 
-def still_used(ctx: Ctx, item: Item, old: dict[str, str]) -> list[str]:
-    """Readable targets that still hold the old value: revoking now would break them."""
-    hits = []
-    for t in ctx.users(item):
-        names = t.vars_using(item)
+def still_used(ctx: Ctx, item: Item, old: dict[str, str]) -> tuple[list[str], list[str]]:
+    """Places that still hold the old value (revoking would break them), and places that can't be read.
+
+    Every place with a key of the same service is checked, not only this key's: a key that was split
+    (arrange) or copied by hand still holds the same old value under another name."""
+    svc, olds = service(item[1]), [v.strip() for v in old.values() if len(v.strip()) >= 8]
+    hits, unknown = [], []
+    for t in ctx.templates:
+        names = [var for var, raw in t.lines.items() if any(service(n) == svc for _v, n, _f in tpl.REF.findall(raw))]
+        if not names:
+            continue
+        if not kind(t.kind).read:
+            unknown.append(t.rel)
+            continue
         try:
-            values = read_target(ctx, t, names)
+            values = ctx.cached("read:" + t.rel, lambda t=t: read_target(ctx, t, list(t.lines)))
         except RekeyError:
+            unknown.append(t.rel)
             continue
         for var in names:
-            try:
-                was = tpl.resolve(t.lines[var], lambda v, n, f: old[f] if (v, n) == item else ctx.lookup(v, n, f))
-            except (KeyError, RekeyError):
-                continue
-            if (values.get(var) or "").strip() == was.strip():
+            value = values.get(var)
+            if value is None:
+                unknown.append(f"{t.rel} {var}")
+            elif any(o in value for o in olds):
                 hits.append(f"{t.rel} {var}")
-    return hits
+    return hits, unknown
 
 
 def revoke_one(ctx: Ctx, item: Item, rec: Record) -> str:
@@ -498,11 +507,17 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
     for n, (item, rec) in enumerate(pending, 1):
         prov = provider(item[1])
         step(f"[{n}/{len(pending)}] {item[1]}  {dim(prov.label)}")
-        if (hits := still_used(ctx, item, rec.previous)) and not force:
+        hits, unknown = still_used(ctx, item, rec.previous)
+        if hits and not force:
             fail(_("Stopping: the old value is still used in") + " " + ", ".join(hits))
-            say("    " + _("Write the new value there, then revoke again:") + " " + bold(resync_hint([h.split(" ")[0] for h in hits])))
+            say("    " + _("Rotate the keys there (or write the new value), then revoke again:") + " " + bold(resync_hint([h.split(" ")[0] for h in hits])))
             left.append(item[1])
             continue
+        if unknown and not force:
+            warn(_("These places can't be read, so rekey can't tell whether they still use the old key:") + " " + ", ".join(unknown))
+            if not ask("    " + _("Revoking breaks them if they do. Revoke anyway?"), default=False):
+                left.append(item[1])
+                continue
         if ctx.dry_run:
             continue
         ctx.vault = item[0]

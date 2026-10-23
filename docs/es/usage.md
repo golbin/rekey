@@ -57,6 +57,7 @@ rekey revoke shop.openai
 ```
 
 - Revoke se niega mientras algún lugar tenga todavía el valor anterior. Lee las variables, no lo que un servicio en marcha tiene cargado, así que revoca solo después de los despliegues.
+- Revisa todos los lugares con una clave del mismo servicio, porque una clave separada o copiada conserva el valor anterior con otro nombre. Los lugares que no puede leer (variables sensitive de Vercel, secrets de GitHub y Supabase) se listan, y pregunta antes de revocar (por defecto: no).
 - En servicios sin API de revocación, rekey muestra los últimos 4 caracteres de la clave anterior y abre la página.
 - Si no se puede escribir en algunos lugares, el resto sigue adelante y al final se muestra el comando para reintentarlos.
 

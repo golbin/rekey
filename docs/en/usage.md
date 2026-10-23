@@ -57,6 +57,7 @@ rekey revoke shop.openai
 ```
 
 - Revoke refuses while a place still holds the old value. It reads the variables, not what a running service has loaded, so revoke only after the deploys.
+- It checks every place with a key of the same service, because a split or copied key keeps the old value under another name. Places it can't read (Vercel sensitive variables, GitHub and Supabase secrets) are listed, and it asks before revoking (default: no).
 - For services without a revoke API, rekey shows the last four characters of the old key and opens the page.
 - If some places can't be written, the rest still go ahead, and the command to retry them is printed at the end.
 

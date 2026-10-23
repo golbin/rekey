@@ -204,6 +204,19 @@ class Flow(unittest.TestCase):
         names = [n for _v, n in ctx.items()]
         self.assertEqual(len(names), len(set(names)))                      # no two keys collapsed into one
 
+    def test_revoke_sees_the_old_value_under_another_name(self):
+        from rekey_lib.arrange import arrange
+        from rekey_lib.store import Record
+        self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
+        self.run_(arrange, self.ctx(), "Test - {env}")                     # web.openai and api.openai: same old value
+        ctx = self.ctx()
+        api = ("Test - Local", "api.openai")
+        self.store.write(*api, Record({"credential": "sk-new-0123456789abcdef"}, previous={"credential": OPENAI},
+                                      state={"revoke": {}, "applied": True}), [])
+        self.run_(core.sync, ctx, ctx.users(api), item=api, values={"credential": "sk-new-0123456789abcdef"})
+        self.assertEqual(self.run_(core.revoke, self.ctx(), [api]), 1)   # web still uses it: refused
+        self.assertIn("file/web/.env.local OPENAI_API_KEY", self.out.getvalue())
+
     def test_init_one_file_adds_only_what_is_missing(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         write(f"{self.root}/api/.env", f"OPENAI_API_KEY={OPENAI}\nRUNNER_AUTH_SECRET=old-auth-secret-1\nPORT=3000\nSTRIPE_API_KEY=sk_test_abc123456789\n")
