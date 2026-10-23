@@ -323,6 +323,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("Rotate the keys there (or write the new value), then revoke again:", "그곳의 키를 교체하거나 새 값을 쓴 뒤 다시 폐기하세요:", "先轮换那里的密钥（或写入新值），再吊销：", "そこのキーを交換する（または新しい値を書く）と、もう一度失効できます：", "Rota las claves de allí (o escribe el valor nuevo) y vuelve a revocar:"),
     ("These places can't be read, so rekey can't tell whether they still use the old key:", "이곳들은 값을 읽을 수 없어서 옛 키를 아직 쓰는지 알 수 없습니다:", "这些地方无法读取，rekey 无法判断它们是否仍在用旧密钥：", "これらの場所は読めないため、古いキーをまだ使っているか分かりません：", "Estos lugares no se pueden leer, así que rekey no sabe si aún usan la clave anterior:"),
     ("Revoking breaks them if they do. Revoke anyway?", "아직 쓰고 있다면 폐기하는 순간 깨집니다. 그래도 폐기할까요?", "如果仍在使用，吊销会让它们失效。仍要吊销？", "使っていれば失効させた瞬間に壊れます。それでも失効させますか？", "Si la usan, revocar los rompe. ¿Revocar igualmente?"),
+    ("Templates moved into project folders: {n}", "프로젝트 폴더로 옮기는 템플릿: {n}개", "移入项目文件夹的模板：{n} 个", "プロジェクトのフォルダへ移すテンプレート：{n} 個", "Plantillas movidas a carpetas de proyecto: {n}"),
     ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),

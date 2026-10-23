@@ -88,7 +88,7 @@ class Flow(unittest.TestCase):
         self.assertNotIn("APP_URL", ctx.template("file/web/.env.local").lines)   # local settings stay local
         self.assertIn("locked", ctx.meta("web.self.data-master-key"))
         self.assertIn("web", ctx.meta("api.openai")["tags"])
-        self.assertNotIn(OPENAI, read(f"{self.home}/targets/file/web/.env.local.tpl"))
+        self.assertNotIn(OPENAI, read(f"{self.home}/targets/web/file/web/.env.local.tpl"))
 
         self.assertEqual(self.run_(core.import_, self.ctx(), self.ctx().select(["all"])), 0)
         self.assertEqual(self.store.read(V, "web.supabase-db").fields, {"password": "oldpw"})
@@ -147,7 +147,7 @@ class Flow(unittest.TestCase):
         finally:
             os.chmod(f"{self.root}/api", 0o755)
         self.assertNotEqual(parse_dotenv(read(f"{self.root}/web/.env.local"))["AUTH_SECRET"], "old-auth-secret-1")
-        self.assertIn("rekey sync targets/file/api/.env.tpl", self.out.getvalue())
+        self.assertIn("rekey sync targets/api/file/api/.env.tpl", self.out.getvalue())
 
     def test_pending_key_is_not_rotated_again_even_with_force(self):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
@@ -172,7 +172,7 @@ class Flow(unittest.TestCase):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         self.run_(arrange, self.ctx(), "Test - {env}")
         ctx = self.ctx()
-        projects = {i[1]: {ctx.project(t.rel) for t in ctx.users(i)} for i in ctx.items()}
+        projects = {i[1]: {ctx.project(t) for t in ctx.users(i)} for i in ctx.items()}
         self.assertEqual(projects["api.self.auth-secret"], {"api", "web"})      # our services share their own tokens
         self.assertEqual(projects["web.openai"], {"web"})                        # a copied key: one per project
         self.assertEqual(projects["api.openai"], {"api"})
@@ -194,7 +194,9 @@ class Flow(unittest.TestCase):
         self.run_(init, self.ctx(), vault=V, sources=[], tags={}, retire=[])
         secret = (V, "api.self.auth-secret")
         self.run_(core.rotate, self.ctx(), [secret])                      # a record that has to move along
+        os.renames(f"{self.home}/targets/api/file/api/.env.tpl", f"{self.home}/targets/file/api/.env.tpl")   # the flat layout
         self.run_(arrange, self.ctx(), "Test - {env}")
+        self.assertTrue(os.path.exists(f"{self.home}/targets/api/file/api/.env.tpl"))     # back in its project folder
         ctx = self.ctx()
         self.assertEqual({v for v, _n in ctx.items()}, {"Test - Local"})       # only .env files here
         self.assertIn(("Test - Local", "api.openai"), ctx.items())
@@ -225,7 +227,7 @@ class Flow(unittest.TestCase):
         self.assertEqual(t.lines["PORT"], "3000")                                   # --with-settings
         self.assertIn("op://Test Vault/api.openai/credential", t.lines["OPENAI_API_KEY"])   # same value → same key
         self.assertIn("STRIPE_API_KEY", t.lines)                                     # the new key was added
-        self.assertFalse(os.path.exists(f"{self.home}/targets/file/web/.env.local.tpl.bak"))
+        self.assertFalse(os.path.exists(f"{self.home}/targets/web/file/web/.env.local.tpl.bak"))
 
 
 class Clipboard(unittest.TestCase):

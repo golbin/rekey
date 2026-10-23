@@ -61,7 +61,7 @@ class Ctx:
         return self.cached(f"rec:{vault}/{name}", lambda: self.store.read(vault, name))
 
     def write(self, vault: str, name: str, rec: Record) -> None:
-        self.store.write(vault, name, rec, self.meta(name).get("tags", []))
+        self.store.write(vault, name, rec, self.meta((vault, name)).get("tags", []))
         self._cache[f"rec:{vault}/{name}"] = rec
 
     def lookup(self, vault: str, name: str, field: str) -> str:
@@ -81,17 +81,23 @@ class Ctx:
         return sorted({f for t in self.users(item) for raw in t.lines.values()
                        for v, n, f in tpl.REF.findall(raw) if (v, n) == item})
 
-    def meta(self, name: str) -> dict[str, Any]:
-        return self.keys.get(name, {})
+    def meta(self, item: Item | str) -> dict[str, Any]:
+        """keys.toml entry: ["Vault/name"] for one vault, else ["name"]."""
+        if isinstance(item, str):
+            return self.keys.get(item, {})
+        return self.keys.get(f"{item[0]}/{item[1]}") or self.keys.get(item[1], {})
 
-    def project(self, rel: str) -> str:
-        """See tpl.project. A Supabase project ref takes the name of the project whose templates point at it."""
-        if not rel.startswith("supabase/"):
-            return tpl.project(self.root, rel)
-        ref = rel.split("/")[1]
+    def project(self, t: tpl.Template) -> str:
+        """The folder the template sits in; else guessed from the target (tpl.project). A Supabase project ref
+        takes the name of the project whose templates point at it."""
+        if t.group:
+            return t.group
+        if t.kind != "supabase":
+            return tpl.project(self.root, t.target)
+        ref = t.address[0]
         def find() -> str:
-            named = Counter(tpl.project(self.root, t.rel) for t in self.templates
-                            if not t.rel.startswith("supabase/") and any(ref in raw for raw in t.lines.values()))
+            named = Counter(self.project(o) for o in self.templates
+                            if o.kind != "supabase" and any(ref in raw for raw in o.lines.values()))
             return named.most_common(1)[0][0] if named else ref
         return self.cached("project:" + ref, find)
 
@@ -100,13 +106,13 @@ class Ctx:
         `only`: narrow down; a bare word means that service or project (openai, shop)."""
         out = []
         for item in self.items():
-            name, m = item[1], self.meta(item[1])
+            name, m = item[1], self.meta(item)
             for sel in selectors:
                 kind_, _sep, arg = sel.partition(":")
                 hit = (sel == "all" and "retire" not in m.get("tags", [])) \
                     or (kind_ == "tag" and arg in m.get("tags", [])) \
-                    or (kind_ == "in" and any(fnmatch.fnmatch(t.rel, arg) for t in self.users(item))) \
-                    or (kind_ == "project" and any(fnmatch.fnmatch(self.project(t.rel), arg) for t in self.users(item))) \
+                    or (kind_ == "in" and any(fnmatch.fnmatch(t.target, arg) or fnmatch.fnmatch(t.rel, arg) for t in self.users(item))) \
+                    or (kind_ == "project" and any(fnmatch.fnmatch(self.project(t), arg) for t in self.users(item))) \
                     or fnmatch.fnmatch(name, sel)
                 if hit:
                     out.append(item)
@@ -124,7 +130,7 @@ class Ctx:
     def template(self, rel: str) -> tpl.Template:
         rel = rel.removeprefix("targets/").removesuffix(".tpl")
         for t in self.templates:
-            if t.rel == rel:
+            if rel in (t.rel, t.target):
                 return t
         raise RekeyError(_("No such template: targets/{rel}.tpl", rel=rel))
 
@@ -270,7 +276,7 @@ def rotate(ctx: Ctx, items: list[Item], *, force: bool = False, redo: bool = Fal
         return 1
     todo, skipped, waiting = [], [], []
     for item in items:
-        m = ctx.meta(item[1])
+        m = ctx.meta(item)
         if not force and (m.get("locked") or "check" in m.get("tags", [])):
             skipped.append((item, m.get("locked") or m.get("note") or _("check before rotating")))
         elif not redo and (rec := ctx.read(*item)) and rec.state.get("revoke") is not None:   # never again before the old one is revoked
@@ -373,7 +379,7 @@ def rotate_one(ctx: Ctx, item: Item, how: str = "auto", apply_now: bool = True) 
     if ctx.dry_run:
         return sync(ctx, users, item=item, values={f: "dry-run" for f in ctx.fields(item)})
     ctx.vault = item[0]
-    prov, m = provider(item[1]), ctx.meta(item[1])
+    prov, m = provider(item[1]), ctx.meta(item)
     need = ctx.fields(item)
     if not apply_now and service(item[1]) == "supabase-db":
         # The old password stops the moment the new one is saved, so it can't wait for `rekey apply`.
@@ -530,7 +536,7 @@ def revoke(ctx: Ctx, items: list[Item], *, force: bool = False) -> int:
                     say("    " + _("Delete the new key {name}… (the old one stays)", name=key_name(item[1], "x")[:-1]) + tail)
                 else:
                     say(f"    {msg[len(MANUAL):]}" + tail + dim("  (" + _("keep {name}…, that is the new one", name=key_name(item[1], "x")[:-1]) + ")"))
-                open_url(ctx.meta(item[1]).get("page") or prov.page)
+                open_url(ctx.meta(item).get("page") or prov.page)
                 if not ask("    " + _("Deleted it?")):
                     left.append(item[1])
                     continue

@@ -26,18 +26,32 @@ Item = tuple[str, str]          # (vault, item name)
 Lookup = Callable[[str, str, str], str]   # (vault, item, field) -> value
 
 
+KINDS = ("file", "vercel", "railway", "supabase", "fly", "worker", "github", "gcp")
+
+
 @dataclass
 class Template:
-    rel: str                     # e.g. "vercel/shop/production"
+    rel: str                     # "shop/vercel/shop/production": <project>/<kind>/<address>, or <kind>/<address>
     lines: dict[str, str] = field(default_factory=dict)   # VAR -> raw template value
 
     @property
+    def group(self) -> str | None:
+        """The project folder the template sits in (None in the flat layout from before 0.3)."""
+        first = self.rel.split("/", 1)[0]
+        return None if first in KINDS else first
+
+    @property
+    def target(self) -> str:
+        """Where the values go: <kind>/<address>."""
+        return self.rel if self.group is None else self.rel.split("/", 1)[1]
+
+    @property
     def kind(self) -> str:
-        return self.rel.split("/", 1)[0]
+        return self.target.split("/", 1)[0]
 
     @property
     def address(self) -> list[str]:
-        return self.rel.split("/")[1:]
+        return self.target.split("/")[1:]
 
     def items(self) -> set[Item]:
         return {(m[0], m[1]) for raw in self.lines.values() for m in REF.findall(raw)}
@@ -90,17 +104,26 @@ def reverse(raw: str, value: str) -> dict[tuple[str, str, str], str] | None:
     return {key: m.group(g) for key, g in seen.items()} if m else None
 
 
-def project(root: str, rel: str) -> str:
-    """The project a template belongs to: the git repository of a file, a Railway service, a Vercel project…"""
-    kind, *a = rel.split("/")
+def project(root: str, target: str) -> str:
+    """The project a target belongs to when no folder says so: the git repository of a file,
+    a Railway service, a Vercel project…"""
+    kind, *a = target.split("/")
     if kind == "file":
-        return next((a[k - 1] for k in range(len(a) - 1, 0, -1) if os.path.exists(os.path.join(root, *a[:k], ".git"))), a[0])
+        for k in range(len(a) - 1, 0, -1):
+            git = os.path.join(root, *a[:k], ".git")
+            if os.path.isdir(git):
+                return a[k - 1]
+            if os.path.isfile(git):          # a worktree: "gitdir: <repo>/.git/worktrees/<name>" names its repository
+                with open(git) as f:
+                    m = re.search(r"([^/]+)/\.git/worktrees/", f.read())
+                return m[1] if m else a[k - 1]
+        return a[0]
     return a[2] if kind == "railway" and len(a) > 2 else a[1] if kind == "github" and len(a) > 1 else a[0]
 
 
-def env(rel: str) -> str:
+def env(target: str) -> str:
     """Prod, Dev or Local: local files are Local; production targets and secret stores are Prod."""
-    kind, *a = rel.split("/")
+    kind, *a = target.split("/")
     name = {"file": "local", "railway": a[1] if len(a) > 1 else "", "vercel": a[-1],
             "github": a[2] if len(a) > 2 else "production"}.get(kind, "production").lower()
     return "Local" if name == "local" else "Prod" if name in ("production", "prod") else "Dev"

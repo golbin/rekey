@@ -377,7 +377,10 @@ def init(ctx, *, vault: str | None, sources: list[str], tags: dict[str, list[str
                 lines[var] = raw.replace(f"/{old}/", f"/{new}/")
 
     written = added = 0
-    for rel, lines in sorted(found.items()):
+    placed = {t.target: t.rel for t in ctx.templates}
+    for target, lines in sorted(found.items()):
+        # A new template goes in its project's folder: targets/<project>/<kind>/<address>.tpl
+        rel = placed.get(target) or f"{ctx.project(tpl.Template(target))}/{target}"
         path = os.path.join(ctx.home, "targets", rel + ".tpl")
         text = "".join(v + "\n" if v.startswith("# ") else f"{k}={v}\n" for k, v in lines.items())
         if os.path.exists(path):

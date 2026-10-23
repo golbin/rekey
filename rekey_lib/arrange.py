@@ -43,13 +43,13 @@ def plan(ctx, pattern: str, old_names: bool = False) -> list[tuple[tuple[str, st
         users = ctx.users(item)
         _project, svc, purpose = parse(name, old_names)
         rec = ctx.read(vault, name)
-        whole = svc in WHOLE or ctx.meta(name).get("locked") or (rec and rec.state.get("revoke") is not None)
+        whole = svc in WHOLE or ctx.meta(item).get("locked") or (rec and rec.state.get("revoke") is not None)
         groups = defaultdict(list)
         for t in users:
-            groups[None if whole else (tpl.env(t.rel), ctx.project(t.rel))].append(t)
+            groups[None if whole else (tpl.env(t.target), ctx.project(t))].append(t)
         if None in groups:
-            projects = Counter(ctx.project(t.rel) for t in users)
-            groups = {(min((tpl.env(t.rel) for t in users), key=RANK.get), projects.most_common(1)[0][0]): users}
+            projects = Counter(ctx.project(t) for t in users)
+            groups = {(min((tpl.env(t.target) for t in users), key=RANK.get), projects.most_common(1)[0][0]): users}
         first = min(groups, key=lambda g: (RANK[g[0]], g[1]))
         for (env, where), ts in sorted(groups.items(), key=lambda g: (RANK[g[0][0]], g[0][1])):
             new_vault = pattern.format(env=env)
@@ -70,13 +70,16 @@ def arrange(ctx, pattern: str, old_names: bool = False) -> int:
         return 1
     moves = plan(ctx, pattern, old_names)
     changed = [m for m in moves if m[0] != m[1]]
+    flat = [t for t in ctx.templates if t.group is None]
     for vault in sorted({nv for _o, (nv, _n), _t, _r in moves}):
         step(vault)
         for (ov, on), (nv, nn), ts, carries in moves:
             if nv == vault and ((ov, on) != (nv, nn)):
                 say(f"  {nn}" + dim(f"  ← {on}" + (" · 1Password" if carries else "") + "  " + ", ".join(t.rel for t in ts)))
     say("\n" + _("Keys renamed or moved: {n}", n=len(changed)))
-    if ctx.dry_run or not changed:
+    if flat:
+        say(_("Templates moved into project folders: {n}", n=len(flat)) + dim("  e.g. targets/" + ctx.project(flat[0]) + "/" + flat[0].rel + ".tpl"))
+    if ctx.dry_run or not (changed or flat):
         return 0
     if ctx.interactive and interactive() and not ask(_("Apply? Templates, keys.toml and 1Password items change (nothing is deleted)"), default=False):
         return 0
@@ -102,13 +105,26 @@ def arrange(ctx, pattern: str, old_names: bool = False) -> int:
         swap = lambda m: "op://{}/{}/".format(*mapping.get((m[1], m[2]), (m[1], m[2])))
         with open(path, "w") as f:
             f.write(re.sub(r"op://([^/{}]+)/([^/{}]+)/", swap, text))
-    # keys.toml, rebuilt: each final name gets the notes and tags of the keys it came from.
-    renamed = {on for (_ov, on), _n, _t, _r in changed}
-    merged = {n: dict(m) for n, m in ctx.keys.items() if n not in renamed}
-    for (_ov, on), (_nv, nn), _t, _r in changed:
-        for k, v in ctx.meta(on).items():
-            m = merged.setdefault(nn, {})
+    # Templates into project folders: targets/<project>/<kind>/<address>.tpl
+    for t in ctx.templates:
+        if t.group is None:
+            os.renames(os.path.join(ctx.home, "targets", t.rel + ".tpl"),
+                       os.path.join(ctx.home, "targets", ctx.project(t), t.rel + ".tpl"))
+    # keys.toml, rebuilt: each new key gets the notes and tags of the key it came from. An entry is
+    # ["name"], or ["Vault/name"] when the same name in another vault needs something different.
+    per_item: dict[tuple[str, str], dict] = {}
+    for old, new, _t, _r in moves:
+        for k, v in ctx.meta(old).items():
+            m = per_item.setdefault(new, {})
             m[k] = sorted(set(m.get(k, [])) | set(v)) if k == "tags" else m.get(k, v)
+    vaults_of = defaultdict(set)
+    for _o, (nv, nn), _t, _r in moves:
+        vaults_of[nn].add(nv)
+    used = {o[1] for o, _n, _t, _r in moves} | {f"{o[0]}/{o[1]}" for o, _n, _t, _r in moves}
+    merged = {n: dict(m) for n, m in ctx.keys.items() if n not in used}      # entries for keys no template uses
+    for (nv, nn), m in per_item.items():
+        same = all(per_item.get((v, nn)) == m for v in vaults_of[nn])
+        merged[nn if same else f"{nv}/{nn}"] = m
     keys_path = os.path.join(ctx.home, "keys.toml")
     head = ""
     if os.path.exists(keys_path):

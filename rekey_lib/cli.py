@@ -40,7 +40,7 @@ def cmd_ls(args) -> int:
     ctx = ctx_for(args)
     rows = [(_("key"), _("vault"), _("service"), _("issued"), _("places"), _("tags"))]
     for item in sorted(ctx.select(args.select or ["all"], args.only), key=lambda i: (i[1], i[0])):
-        m = ctx.meta(item[1])
+        m = ctx.meta(item)
         tags = m.get("tags", []) + (["locked"] if m.get("locked") else [])
         rows.append((item[1], item[0], provider(item[1]).label, {"self": _("auto"), "auto": _("auto"), "admin": _("auto") + "*", "browser": _("browser")}[core.mode(item)],
                      str(len(ctx.users(item))), " ".join(tags)))
@@ -59,7 +59,7 @@ def cmd_where(args) -> int:
     ctx = ctx_for(args)
     for item in ctx.select(args.select):
         say(bold(item[1]) + dim(f"  op://{item[0]}/{item[1]}  · {provider(item[1]).label}"))
-        if note := ctx.meta(item[1]).get("note"):
+        if note := ctx.meta(item).get("note"):
             say(f"  {note}")
         for t in ctx.users(item):
             say(f"  targets/{t.rel}.tpl  {dim(', '.join(t.vars_using(item)))}")
@@ -79,7 +79,7 @@ def cmd_sync(args) -> int:
 def cmd_deploy(args) -> int:
     ctx = ctx_for(args)
     actions = [("railway", *t.address) if t.kind == "railway" else ("vercel", t.address[0])
-               for t in templates(ctx, args.templates) if t.kind == "railway" or t.rel.endswith("/production") and t.kind == "vercel"]
+               for t in templates(ctx, args.templates) if t.kind == "railway" or t.kind == "vercel" and t.address[-1] == "production"]
     return 1 if core.deploy(ctx, actions) else 0
 
 
