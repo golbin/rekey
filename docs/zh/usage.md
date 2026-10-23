@@ -157,6 +157,6 @@ page = "https://…"              # 浏览器步骤要打开的页面
 
 条目名是 `["名称"]`；同一名称在两个保险库中是不同密钥时，写成 `["保险库/名称"]`。
 
-**管理员密钥**：在任意一个 vault（通常是 Prod）中有 `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（用于吊销）条目时，这些服务会自动处理。`rekey setup` 会帮你添加。
+**管理员密钥**：在 `<团队> - Admin` 保险库（与 `<团队> - Prod` 并列，只共享给尽量少的人）中有 `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（用于吊销）条目时，这些服务会自动处理。`rekey setup` 会帮你添加。
 
 **环境变量**：`REKEY_HOME`（团队数据文件夹；默认是从当前位置向上找到的第一个含有 `targets/` 或 `keys.toml` 的文件夹）、`REKEY_ROOT`（`file/` 的基准文件夹，默认是 `REKEY_HOME` 的上一级）、`REKEY_STORE=file:<路径>`（用文件代替 1Password，用于测试）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）

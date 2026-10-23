@@ -40,7 +40,7 @@ rekey setup
 
 빠진 것을 하나씩 알려 주고 그 자리에서 해결합니다.
 - 사용하는 플랫폼 CLI(`vercel`, `railway`, `supabase`, `gcloud`, `gh` 등) 로그인: rekey가 로그인 명령을 실행하면 브라우저에서 승인만 합니다.
-- 관리자 키 (선택): OpenAI·Cloudflare·Resend 키를 브라우저 없이 자동으로 발급합니다. Prod 볼트에 보관합니다.
+- 관리자 키 (선택): OpenAI·Cloudflare·Resend 키를 브라우저 없이 자동으로 발급합니다. 별도 볼트 `<팀> - Admin`에 보관합니다.
 
 "준비 완료"로 끝나면 됩니다. 이후에도 `rotate`가 시작할 때마다 같은 점검을 합니다.
 

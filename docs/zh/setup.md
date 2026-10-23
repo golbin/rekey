@@ -40,7 +40,7 @@ rekey setup
 
 它会列出缺少的东西并当场解决：
 - 所用平台 CLI（`vercel`、`railway`、`supabase`、`gcloud`、`gh` 等）的登录：rekey 运行登录命令，你只需在浏览器中批准。
-- 管理员密钥（可选）：有了它，OpenAI、Cloudflare、Resend 的密钥无需浏览器即可自动签发。它们保存在 Prod vault 中。
+- 管理员密钥（可选）：有了它，OpenAI、Cloudflare、Resend 的密钥无需浏览器即可自动签发。它们保存在单独的 `<团队> - Admin` 保险库中。
 
 显示准备完成即可。之后每次 `rotate` 开始时都会做同样的检查。
 

@@ -40,7 +40,7 @@ rekey setup
 
 It lists what is missing and fixes it on the spot:
 - Logins for the platform CLIs you use (`vercel`, `railway`, `supabase`, `gcloud`, `gh`…): rekey runs the login command; you approve in the browser.
-- Admin keys (optional): with these, OpenAI, Cloudflare and Resend keys are issued without the browser. They are kept in the Prod vault.
+- Admin keys (optional): with these, OpenAI, Cloudflare and Resend keys are issued without the browser. They are kept in their own vault, `<team> - Admin`.
 
 You're done when it says it is ready. `rotate` runs the same check every time it starts.
 

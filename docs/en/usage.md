@@ -157,6 +157,6 @@ page = "https://…"              # page to open in the browser step
 
 An entry is `["name"]`, or `["Vault/name"]` when the same name means different keys in two vaults.
 
-**Admin keys**: items `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` and `rekey.anthropic-admin` (for revoking) in any of your vaults, usually Prod, make those services automatic. `rekey setup` helps you add them.
+**Admin keys**: items `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` and `rekey.anthropic-admin` (for revoking) in the `<team> - Admin` vault (next to `<team> - Prod`; share it with as few people as possible) make those services automatic. `rekey setup` helps you add them.
 
 **Environment**: `REKEY_HOME` (team data folder; default: the nearest folder up from here with `targets/` or `keys.toml`), `REKEY_ROOT` (base folder for `file/`, defaults to the parent of `REKEY_HOME`), `REKEY_STORE=file:<path>` (a file instead of 1Password, for testing), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)

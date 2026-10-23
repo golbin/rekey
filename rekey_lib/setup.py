@@ -7,7 +7,7 @@ import subprocess
 import sys
 from collections import Counter
 
-from .providers import Provider, Skip, admin_record, from_browser, service
+from .providers import Provider, Skip, admin_record, admin_vault, from_browser, service
 from .store import Record
 from .targets import KINDS, logged_in
 from .i18n import _
@@ -77,9 +77,12 @@ def preflight(ctx, items: list[tuple[str, str]], fix: bool = True) -> bool:
 
 
 def offer_admin_keys(ctx, items: list[tuple[str, str]]) -> None:
-    # Admin keys open every key of a service: keep them in the most protected vault (… - Prod if there is one).
-    vaults = Counter(v for v, _name in ctx.items())
-    vault = next((v for v in vaults if v.lower().endswith("prod")), None) or vaults.most_common(1)[0][0]
+    # Admin keys open every key of a service: they go to their own vault, shared with the fewest people.
+    vault = admin_vault(ctx)
+    if vault and not ctx.store.has_vault(vault):
+        if not ask("    " + _("Admin keys go to their own vault '{vault}' (share it with as few people as possible). Create it?", vault=vault)):
+            return
+        ctx.store.create_vault(vault)
     for prov, n in Counter(service(name) for _vault, name in items).items():
         if prov not in ADMIN or n < 2:
             continue

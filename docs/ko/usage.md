@@ -157,6 +157,6 @@ page = "https://…"              # 브라우저 단계에서 열 페이지
 
 항목 이름은 `["이름"]`이고, 같은 이름이 두 볼트에서 다른 키라면 `["볼트/이름"]`으로 씁니다.
 
-**관리자 키**: `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 볼트 중 어디든(보통 Prod) 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
+**관리자 키**: `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 `<팀> - Admin` 볼트(`<팀> - Prod` 옆, 최소 인원에게만 공유)에 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
 
 **환경변수**: `REKEY_HOME`(팀 데이터 폴더. 기본값은 현재 폴더에서 위로 올라가며 처음 만나는 `targets/`나 `keys.toml`이 있는 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)

@@ -40,7 +40,7 @@ rekey setup
 
 足りないものを一つずつ示し、その場で解決します。
 - 使っているプラットフォーム CLI（`vercel`、`railway`、`supabase`、`gcloud`、`gh` など）のログイン：rekey がログインコマンドを実行するので、ブラウザで承認するだけです。
-- 管理者キー（任意）：あると OpenAI・Cloudflare・Resend のキーをブラウザなしで自動発行します。Prod の vault に保管します。
+- 管理者キー（任意）：あると OpenAI・Cloudflare・Resend のキーをブラウザなしで自動発行します。専用の `<チーム> - Admin` の保管庫に保管します。
 
 準備完了と出れば終わりです。以後も `rotate` は開始のたびに同じ確認をします。
 

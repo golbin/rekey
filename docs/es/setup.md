@@ -40,7 +40,7 @@ rekey setup
 
 Te dice lo que falta y lo resuelve en el momento:
 - Inicio de sesión en las CLI de las plataformas que uses (`vercel`, `railway`, `supabase`, `gcloud`, `gh`…): rekey ejecuta el comando de inicio de sesión y tú solo apruebas en el navegador.
-- Claves de administrador (opcional): con ellas, las claves de OpenAI, Cloudflare y Resend se emiten sin navegador. Se guardan en la bóveda de Prod.
+- Claves de administrador (opcional): con ellas, las claves de OpenAI, Cloudflare y Resend se emiten sin navegador. Se guardan en su propia bóveda, `<equipo> - Admin`.
 
 Has terminado cuando diga que todo está listo. `rotate` hace la misma comprobación cada vez que empieza.
 

@@ -324,6 +324,7 @@ ROWS: list[tuple[str, str, str, str, str]] = [
     ("These places can't be read, so rekey can't tell whether they still use the old key:", "이곳들은 값을 읽을 수 없어서 옛 키를 아직 쓰는지 알 수 없습니다:", "这些地方无法读取，rekey 无法判断它们是否仍在用旧密钥：", "これらの場所は読めないため、古いキーをまだ使っているか分かりません：", "Estos lugares no se pueden leer, así que rekey no sabe si aún usan la clave anterior:"),
     ("Revoking breaks them if they do. Revoke anyway?", "아직 쓰고 있다면 폐기하는 순간 깨집니다. 그래도 폐기할까요?", "如果仍在使用，吊销会让它们失效。仍要吊销？", "使っていれば失効させた瞬間に壊れます。それでも失効させますか？", "Si la usan, revocar los rompe. ¿Revocar igualmente?"),
     ("Templates moved into project folders: {n}", "프로젝트 폴더로 옮기는 템플릿: {n}개", "移入项目文件夹的模板：{n} 个", "プロジェクトのフォルダへ移すテンプレート：{n} 個", "Plantillas movidas a carpetas de proyecto: {n}"),
+    ("Admin keys go to their own vault '{vault}' (share it with as few people as possible). Create it?", "관리자 키는 별도 볼트 '{vault}'에 둡니다(최소 인원에게만 공유하세요). 만들까요?", "管理员密钥放在单独的保险库 '{vault}'（只共享给尽量少的人）。要创建吗？", "管理者キーは専用の保管庫 '{vault}' に置きます（共有はできるだけ少人数に）。作成しますか？", "Las claves de administrador van en su propia bóveda '{vault}' (compártela con el menor número de personas). ¿Crearla?"),
     ("Reading the keys in '{vault}'…", "'{vault}'의 키를 읽는 중…", "正在读取 '{vault}' 中的密钥…", "'{vault}' のキーを読み込み中…", "Leyendo las claves de '{vault}'…"),
     ("lines added: {n}", "{n}줄 추가", "新增 {n} 行", "{n} 行追加", "líneas añadidas: {n}"),
     ("unknown source: {src}", "모르는 소스: {src}", "未知来源：{src}", "不明なソース：{src}", "origen desconocido: {src}"),

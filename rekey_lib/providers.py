@@ -21,6 +21,7 @@ import re
 import select
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -67,10 +68,22 @@ def key_name(item: str, when: str = "") -> str:
     return re.sub(r"[^a-z0-9]+", "_", f"rekey {item} {when or stamp()}".lower()).strip("_")
 
 
+def admin_vault(ctx) -> str:
+    """Where admin keys live: "<team> - Admin" next to "<team> - Prod", shared with fewer people than Prod.
+    Without a Prod vault, the vault most templates use."""
+    vaults = Counter(v for v, _n in ctx.items())
+    prod = next((v for v in sorted(vaults) if re.search(r"(?i)\bprod$", v)), None)
+    return re.sub(r"(?i)prod$", "Admin", prod) if prod else (vaults.most_common(1)[0][0] if vaults else "")
+
+
 def admin_record(ctx, name: str, vault: str = ""):
-    """rekey.<name>: next to the keys it manages, or in any vault the templates use (e.g. only in Prod)."""
-    for v in dict.fromkeys([vault or ctx.vault, *sorted({v for v, _n in ctx.items()})]):
-        if v and (rec := ctx.read(v, f"rekey.{name}")) and rec.fields.get("credential"):
+    """rekey.<name> in the admin vault; also found next to the keys it manages or in any vault the templates use."""
+    for v in dict.fromkeys([admin_vault(ctx), vault or ctx.vault, *sorted({v for v, _n in ctx.items()})]):
+        try:
+            rec = ctx.read(v, f"rekey.{name}") if v else None
+        except RekeyError:            # e.g. no admin vault yet, or no access to it
+            continue
+        if rec and rec.fields.get("credential"):
             return rec
     return None
 

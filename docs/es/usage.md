@@ -157,6 +157,6 @@ page = "https://…"                # página que se abre en el paso de navegado
 
 Una entrada es `["nombre"]`, o `["Bóveda/nombre"]` cuando el mismo nombre es una clave distinta en dos bóvedas.
 
-**Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en cualquiera de tus bóvedas, normalmente la de Prod, esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
+**Claves de administrador**: con los elementos `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin` y `rekey.anthropic-admin` (para revocar) en la bóveda `<equipo> - Admin` (junto a `<equipo> - Prod`; compártela con el menor número de personas), esos servicios son automáticos. `rekey setup` te ayuda a añadirlos.
 
 **Variables de entorno**: `REKEY_HOME` (carpeta de datos del equipo; por defecto, la carpeta más cercana hacia arriba que tenga `targets/` o `keys.toml`), `REKEY_ROOT` (carpeta base de `file/`; por defecto, la carpeta superior de `REKEY_HOME`), `REKEY_STORE=file:<ruta>` (un archivo en lugar de 1Password, para pruebas), `REKEY_NO_BROWSER=1`, `REKEY_LANG` (en, ko, zh, ja, es)
