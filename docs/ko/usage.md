@@ -159,4 +159,4 @@ page = "https://…"              # 브라우저 단계에서 열 페이지
 
 **관리자 키**: `rekey.openai-admin`, `rekey.cloudflare-admin`, `rekey.resend-admin`, `rekey.anthropic-admin`(폐기용) 항목이 `<팀> - Admin` 볼트(`<팀> - Prod` 옆, 최소 인원에게만 공유)에 있으면 해당 서비스를 자동으로 처리합니다. `rekey setup`이 등록을 도와줍니다.
 
-**환경변수**: `REKEY_HOME`(팀 데이터 폴더. 기본값은 현재 폴더에서 위로 올라가며 처음 만나는 `targets/`나 `keys.toml`이 있는 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)
+**환경변수**: `REKEY_HOME`(팀 데이터 폴더. 기본값은 현재 폴더에서 위로 올라가며 처음 만나는 `targets/`나 `keys.toml`이 있는 폴더), `REKEY_ROOT`(`file/` 기준 폴더, 기본값은 `REKEY_HOME`의 상위 폴더), `REKEY_STORE=file:<경로>`(1Password 대신 파일, 테스트용), `REKEY_STORE=keychain` 또는 `keychain:<키체인 파일>`(1Password 대신 macOS 키체인. `REKEY_KEYCHAIN_PROMPT=1`이면 읽을 때마다 macOS가 허용을 묻습니다), `REKEY_NO_BROWSER=1`, `REKEY_LANG`(en, ko, zh, ja, es)

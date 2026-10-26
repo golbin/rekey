@@ -159,4 +159,4 @@ page = "https://…"              # ブラウザ手順で開くページ
 
 **管理者キー**：`<チーム> - Admin` の保管庫（`<チーム> - Prod` と並べ、共有はできるだけ少人数に）に `rekey.openai-admin`、`rekey.cloudflare-admin`、`rekey.resend-admin`、`rekey.anthropic-admin`（無効化用）があれば、そのサービスを自動で処理します。`rekey setup` が登録を手伝います。
 
-**環境変数**：`REKEY_HOME`（チームデータのフォルダ。既定は現在の場所から上にたどって最初に `targets/` か `keys.toml` がある場所）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）
+**環境変数**：`REKEY_HOME`（チームデータのフォルダ。既定は現在の場所から上にたどって最初に `targets/` か `keys.toml` がある場所）、`REKEY_ROOT`（`file/` の基準フォルダ。既定は `REKEY_HOME` の親）、`REKEY_STORE=file:<パス>`（1Password の代わりにファイル、テスト用）、`REKEY_STORE=keychain` または `keychain:<キーチェーンファイル>`（1Password の代わりに macOS キーチェーン。`REKEY_KEYCHAIN_PROMPT=1` で読むたびに macOS が許可を確認）、`REKEY_NO_BROWSER=1`、`REKEY_LANG`（en、ko、zh、ja、es）
