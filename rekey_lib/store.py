@@ -171,6 +171,104 @@ class FileStore:
         os.replace(self.path + ".tmp", self.path)
 
 
-def open_store() -> OnePassword | FileStore:
+class Keychain:
+    """The macOS keychain, through `security`. One generic password per key
+    (service `rekey:<vault>/<name>`, value = the Record as JSON), plus one item per vault
+    (`rekey:<vault>/`) listing its names. Values never go on a command line: they reach
+    `security -i` on stdin, hex-encoded (-X). REKEY_KEYCHAIN (or `keychain:<path>`) picks a
+    keychain file; REKEY_KEYCHAIN_PROMPT=1 creates items with no trusted app (-T ""), so macOS
+    asks before every read."""
+
+    label = "macOS Keychain"
+    ACCT = "rekey"
+
+    def __init__(self, keychain: str | None = None):
+        self.keychain = keychain or os.environ.get("REKEY_KEYCHAIN") or None
+        self.prompt = os.environ.get("REKEY_KEYCHAIN_PROMPT") == "1"
+
+    def _kc(self) -> list[str]:
+        return [self.keychain] if self.keychain else []
+
+    @staticmethod
+    def _svc(vault: str, name: str) -> str:
+        return f"rekey:{vault}/{name}"
+
+    def check(self) -> str | None:
+        return None if have("security") else _("macOS `security` is required for the keychain store")
+
+    def has_vault(self, vault: str) -> bool:
+        return True
+
+    def create_vault(self, vault: str) -> None:
+        pass
+
+    def _get_raw(self, svc: str) -> str | None:
+        p = run(["security", "find-generic-password", "-s", svc, "-a", self.ACCT, "-w", *self._kc()], check=False, timeout=60)
+        if p.returncode == 44:                                  # errSecItemNotFound
+            return None
+        if p.returncode:
+            raise RekeyError(_("couldn't read {name} from the keychain:", name=svc) + " " + p.stderr.strip()[-150:])
+        out = p.stdout.rstrip("\n")
+        # `security -w` prints the value as hex when it has non-ASCII or control characters.
+        # Our values are always JSON (starting with { or [), so hex is easy to tell apart.
+        if out and out[0] not in "{[" and all(c in "0123456789abcdefABCDEF" for c in out) and len(out) % 2 == 0:
+            out = bytes.fromhex(out).decode("utf-8")
+        return out
+
+    def _put_raw(self, svc: str, value: str) -> None:
+        trust = ' -T ""' if self.prompt else ""
+        kc = f' "{self.keychain}"' if self.keychain else ""
+        cmd = f'add-generic-password -U -s "{svc}" -a "{self.ACCT}" -l "{svc}"{trust} -X {value.encode().hex()}{kc}\n'
+        p = run(["security", "-i"], stdin=cmd, check=False, timeout=60)
+        if p.returncode or "error" in (p.stderr or "").lower():
+            raise RekeyError(_("couldn't write {name} to the keychain:", name=svc) + " " + (p.stderr or "").strip()[-150:])
+
+    def _delete(self, svc: str) -> None:
+        run(["security", "delete-generic-password", "-s", svc, "-a", self.ACCT, *self._kc()], check=False, timeout=60)
+
+    def _index(self, vault: str) -> list[str]:
+        raw = self._get_raw(self._svc(vault, ""))
+        return json.loads(raw) if raw else []
+
+    def _set_index(self, vault: str, names: list[str]) -> None:
+        self._put_raw(self._svc(vault, ""), json.dumps(sorted(set(names)), ensure_ascii=False))
+
+    def read(self, vault: str, name: str) -> Record | None:
+        raw = self._get_raw(self._svc(vault, name))
+        return Record(**json.loads(raw)) if raw else None
+
+    def read_all(self, vault: str) -> dict[str, Record]:
+        out = {}
+        for name in self._index(vault):
+            rec = self.read(vault, name)
+            if rec is not None:
+                out[name] = rec
+        return out
+
+    def write(self, vault: str, name: str, rec: Record, tags: list[str]) -> None:
+        self._put_raw(self._svc(vault, name), json.dumps(rec.__dict__, ensure_ascii=False))
+        names = self._index(vault)
+        if name not in names:
+            self._set_index(vault, names + [name])
+
+    def item_id(self, vault: str, name: str) -> str:
+        return f"{vault}/{name}" if self._get_raw(self._svc(vault, name)) is not None else ""
+
+    def move(self, vault: str, item_id: str, to_vault: str, to_name: str) -> None:
+        from_vault, from_name = item_id.split("/", 1)
+        raw = self._get_raw(self._svc(from_vault, from_name))
+        if raw is None:
+            raise RekeyError(_("couldn't read {name} from the keychain:", name=item_id))
+        self._put_raw(self._svc(to_vault, to_name), raw)
+        self._set_index(to_vault, self._index(to_vault) + [to_name])
+        self._delete(self._svc(from_vault, from_name))
+        self._set_index(from_vault, [n for n in self._index(from_vault) if n != from_name])
+
+
+def open_store() -> OnePassword | FileStore | Keychain:
     spec = os.environ.get("REKEY_STORE", "")
-    return FileStore(spec[5:]) if spec.startswith("file:") else OnePassword()
+    if spec.startswith("file:"):
+        return FileStore(spec[5:])
+    if spec == "keychain" or spec.startswith("keychain:"):
+        return Keychain(spec[9:] or None)
+    return OnePassword()

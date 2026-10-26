@@ -12,7 +12,7 @@ os.environ["REKEY_LANG"] = "en"       # the assertions below read English messag
 
 from rekey_lib import core, tpl  # noqa: E402
 from rekey_lib.init import init  # noqa: E402
-from rekey_lib.store import FileStore  # noqa: E402
+from rekey_lib.store import FileStore, Keychain, Record  # noqa: E402
 from rekey_lib.targets import parse_dotenv, write_file  # noqa: E402
 
 V = "Test Vault"
@@ -257,6 +257,49 @@ class Home(unittest.TestCase):
             os.environ.pop("REKEY_HOME", None)
             if env:
                 os.environ["REKEY_HOME"] = env
+
+
+@unittest.skipUnless(sys.platform == "darwin" and os.path.exists("/usr/bin/security"), "macOS keychain")
+class KeychainStore(unittest.TestCase):
+    """A throwaway keychain file, removed afterwards: the login keychain is never touched."""
+
+    def setUp(self):
+        import subprocess
+        self.sp = subprocess
+        self.kc = os.path.join(tempfile.mkdtemp(), "rekey-test.keychain-db")
+        subprocess.run(["security", "create-keychain", "-p", "test", self.kc], check=True)
+        subprocess.run(["security", "unlock-keychain", "-p", "test", self.kc], check=True)
+        self.s = Keychain(self.kc)
+
+    def tearDown(self):
+        self.sp.run(["security", "delete-keychain", self.kc], check=False)
+
+    def test_round_trip(self):
+        self.assertIsNone(self.s.read(V, "openai"))
+        self.assertEqual(self.s.read_all(V), {})
+        odd = 'a"b\\c $HOME `x` 한글\nline'
+        self.s.write(V, "openai", Record(fields={"credential": OPENAI}, state={"meta": {"id": "k1"}}), ["t"])
+        self.s.write(V, "odd", Record(fields={"credential": odd}), [])
+        self.assertEqual(self.s.read(V, "openai").fields["credential"], OPENAI)
+        self.assertEqual(self.s.read(V, "openai").state, {"meta": {"id": "k1"}})
+        self.assertEqual(self.s.read(V, "odd").fields["credential"], odd)
+        self.s.write(V, "openai", Record(fields={"credential": "new"}, previous={"credential": OPENAI}), [])
+        self.assertEqual(self.s.read(V, "openai").previous["credential"], OPENAI)
+        self.assertEqual(sorted(self.s.read_all(V)), ["odd", "openai"])
+        self.s.move(V, self.s.item_id(V, "odd"), "Admin", "odd2")
+        self.assertIsNone(self.s.read(V, "odd"))
+        self.assertEqual(self.s.read("Admin", "odd2").fields["credential"], odd)
+
+    def test_value_never_on_a_command_line(self):
+        import rekey_lib.store as store
+        seen, real = [], store.run
+        store.run = lambda cmd, **kw: (seen.append((cmd, kw.get("stdin") or "")), real(cmd, **kw))[1]
+        try:
+            self.s.write(V, "k", Record(fields={"credential": OPENAI}), [])
+        finally:
+            store.run = real
+        self.assertTrue(seen)
+        self.assertFalse(any(OPENAI in " ".join(cmd) or OPENAI in stdin for cmd, stdin in seen))
 
 
 class Messages(unittest.TestCase):
